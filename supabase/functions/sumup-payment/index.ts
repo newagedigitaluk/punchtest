@@ -102,75 +102,86 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Checkout created successfully:', JSON.stringify(checkoutData))
 
-    // If we have a reader, send the payment to the reader using the correct endpoint
+    // If we have a reader, send the payment to the reader using SumUp Terminal API
     if (readerId && checkoutData.id) {
       console.log(`Sending payment ${checkoutData.id} to reader ${readerId}`)
       
-      try {
-        // Use the correct endpoint for sending payment to reader
-        const readerPaymentUrl = `https://api.sumup.com/v0.1/readers/${readerId}/payment`
-        
-        const paymentPayload = {
-          checkout: {
-            checkout_reference: checkoutReference,
-            amount: amount,
-            currency: currency,
-            description: 'Punch Power Machine Payment'
-          }
+      // IMPORTANT: For SumUp Terminal API, we need to use the checkoutId directly
+      // using the /v1.0/terminals/{terminal_id}/checkout-reference/{checkout_reference} endpoint
+      // This is the correct endpoint for telling a physical reader to process a payment
+      const terminalApiUrl = `https://api.sumup.com/v1.0/terminals/${readerId}/checkout-reference/${checkoutReference}`
+      
+      console.log('Using Terminal API endpoint:', terminalApiUrl)
+      
+      const terminalResponse = await fetch(terminalApiUrl, {
+        method: 'PUT', // The Terminal API uses PUT to send payments to readers
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         }
+      })
+
+      console.log('Terminal API response status:', terminalResponse.status)
+      
+      if (terminalResponse.ok) {
+        const terminalData = await terminalResponse.json()
+        console.log('Payment successfully sent to reader:', JSON.stringify(terminalData))
+      } else {
+        const terminalError = await terminalResponse.text()
+        console.error('Terminal API Error:', terminalError)
         
-        console.log('Sending payment to reader:', JSON.stringify(paymentPayload))
+        // Try alternative approach - using the legacy API endpoint as fallback
+        console.log('Trying alternative API endpoint for sending to reader...')
+        const legacyApiUrl = `https://api.sumup.com/v0.1/checkouts/${checkoutData.id}/terminal/${readerId}`
         
-        const readerResponse = await fetch(readerPaymentUrl, {
+        const legacyResponse = await fetch(legacyApiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(paymentPayload)
+          }
         })
 
-        console.log('Reader payment response status:', readerResponse.status)
+        console.log('Legacy API response status:', legacyResponse.status)
         
-        if (readerResponse.ok) {
-          const readerData = await readerResponse.json()
-          console.log('Payment sent to reader successfully:', JSON.stringify(readerData))
+        if (legacyResponse.ok) {
+          const legacyData = await legacyResponse.json()
+          console.log('Payment sent to reader using legacy API:', JSON.stringify(legacyData))
         } else {
-          const readerError = await readerResponse.text()
-          console.error('Failed to send payment to reader:', readerError)
+          const legacyError = await legacyResponse.text()
+          console.error('Legacy API Error:', legacyError)
           
-          // Try alternative approach - direct checkout processing
-          console.log('Trying alternative checkout processing...')
-          const processUrl = `https://api.sumup.com/v0.1/checkouts/${checkoutData.id}/process`
+          // Try one more alternative as a last resort
+          console.log('Trying one final alternative approach...')
+          const directPaymentUrl = `https://api.sumup.com/v0.1/terminals/${readerId}/charge`
           
-          const processPayload = {
-            payment_type: 'card',
-            installments: 1
+          const directPayload = {
+            amount: amount,
+            currency: currency,
+            checkout_reference: checkoutReference,
+            description: 'Punch Power Machine Payment'
           }
           
-          const processResponse = await fetch(processUrl, {
+          const directResponse = await fetch(directPaymentUrl, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${apiKey}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(processPayload)
+            body: JSON.stringify(directPayload)
           })
 
-          console.log('Process checkout response status:', processResponse.status)
+          console.log('Direct charge API response status:', directResponse.status)
           
-          if (processResponse.ok) {
-            const processData = await processResponse.json()
-            console.log('Checkout processing initiated:', JSON.stringify(processData))
+          if (directResponse.ok) {
+            const directData = await directResponse.json()
+            console.log('Payment sent to reader using direct charge API:', JSON.stringify(directData))
           } else {
-            const processError = await processResponse.text()
-            console.warn('Failed to process checkout:', processError)
-            console.log('Checkout created but requires manual interaction on reader')
+            const directError = await directResponse.text()
+            console.error('Direct charge API Error:', directError)
+            console.log('All API attempts failed, but checkout was created successfully')
           }
         }
-      } catch (readerError) {
-        console.warn('Reader communication failed:', readerError)
-        console.log('Checkout created successfully but reader communication failed')
       }
     }
 
