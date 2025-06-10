@@ -49,20 +49,20 @@ const AdminLogin = ({ onLogin, onCancel }: AdminLoginProps) => {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-gray-800 border-gray-700">
+    <div className="h-screen bg-slate-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white border-slate-300 shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-3 text-2xl text-yellow-400">
+          <CardTitle className="flex items-center justify-center gap-3 text-2xl text-red-600">
             <Lock className="w-8 h-8" />
             ADMIN ACCESS
           </CardTitle>
-          <p className="text-gray-400 text-sm mt-2">
+          <p className="text-slate-600 text-sm mt-2">
             Enter administrator password to continue
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-white">Password</Label>
+            <Label htmlFor="password" className="text-slate-900 font-medium">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -71,14 +71,14 @@ const AdminLogin = ({ onLogin, onCancel }: AdminLoginProps) => {
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter admin password"
-                className="bg-gray-700 border-gray-600 text-white pr-10"
+                className="bg-white border-slate-300 text-slate-900 pr-10"
                 disabled={attempts >= MAX_ATTEMPTS}
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
+                className="absolute right-0 top-0 h-full px-3 text-slate-600 hover:text-slate-900"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -87,7 +87,7 @@ const AdminLogin = ({ onLogin, onCancel }: AdminLoginProps) => {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm text-center">
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm text-center">
               {error}
             </div>
           )}
@@ -96,20 +96,20 @@ const AdminLogin = ({ onLogin, onCancel }: AdminLoginProps) => {
             <Button 
               onClick={onCancel}
               variant="outline" 
-              className="flex-1 text-white border-gray-600 hover:bg-gray-700"
+              className="flex-1 text-slate-700 border-slate-400 bg-white hover:bg-slate-50"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleLogin}
               disabled={!password || attempts >= MAX_ATTEMPTS}
-              className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-black font-semibold"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold"
             >
               Login
             </Button>
           </div>
 
-          <div className="text-center text-xs text-gray-500 mt-4">
+          <div className="text-center text-xs text-slate-500 mt-4">
             Demo Password: admin123
           </div>
         </CardContent>
