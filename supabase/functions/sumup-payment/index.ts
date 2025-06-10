@@ -78,7 +78,13 @@ serve(async (req) => {
       currencyMinorUnits = 0
     }
 
-    // Use the correct Reader Checkout API endpoint from your working Python code
+    // Construct the webhook URL - this is where SumUp will send payment updates
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const webhookUrl = `${supabaseUrl}/functions/v1/sumup-webhook`
+    
+    console.log(`Using webhook URL: ${webhookUrl}`)
+
+    // Use the correct Reader Checkout API endpoint
     const apiUrl = `https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}/checkout`
     
     const checkoutPayload = {
@@ -88,7 +94,7 @@ serve(async (req) => {
         minor_unit: currencyMinorUnits
       },
       description: `Punch Power Machine Payment (${checkoutReference})`,
-      return_url: "https://example.com/sumup_webhook_placeholder" // Required HTTPS URL
+      return_url: webhookUrl // SumUp will send payment result to this webhook
     }
 
     console.log('Creating reader checkout with payload:', JSON.stringify(checkoutPayload))
@@ -114,7 +120,7 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Reader checkout created successfully:', JSON.stringify(checkoutData))
 
-    // Extract the client_transaction_id from the response (this is what SumUp uses for webhooks)
+    // Extract the client_transaction_id from the response
     const clientTransactionId = checkoutData.data?.client_transaction_id
     
     if (!clientTransactionId) {
@@ -123,18 +129,20 @@ serve(async (req) => {
     }
 
     console.log(`Payment successfully sent to reader ${readerId}, client_transaction_id: ${clientTransactionId}`)
+    console.log(`Webhook configured: ${webhookUrl} - SumUp will send payment updates here`)
 
     return new Response(
       JSON.stringify({
         success: true,
-        checkoutId: clientTransactionId, // Use client_transaction_id as the main ID
+        checkoutId: clientTransactionId,
         checkoutReference: checkoutReference,
-        clientTransactionId: clientTransactionId, // Also return separately for clarity
+        clientTransactionId: clientTransactionId,
         amount: amount,
         currency: currency,
         readerId: readerId,
         status: 'PENDING',
-        message: 'Payment sent to reader successfully',
+        message: 'Payment sent to reader successfully. Webhook configured for real-time updates.',
+        webhookUrl: webhookUrl,
         debug: {
           merchantCode: merchantCode,
           isTestMode: isTestMode,

@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UsePaymentActionsProps {
@@ -18,6 +19,8 @@ export const usePaymentActions = ({
   setError,
   onPaymentComplete
 }: UsePaymentActionsProps) => {
+  const [checkoutId, setLocalCheckoutId] = useState<string | null>(null);
+
   const initiatePayment = async () => {
     if (!selectedReaderId) {
       setError('No SumUp reader selected. Please check SumUp settings.');
@@ -28,7 +31,7 @@ export const usePaymentActions = ({
     setError('');
     
     try {
-      console.log('Creating SumUp payment with reader ID:', selectedReaderId);
+      console.log('Creating SumUp payment with webhook support, reader ID:', selectedReaderId);
       
       const { data, error } = await supabase.functions.invoke('sumup-payment', {
         body: {
@@ -42,8 +45,13 @@ export const usePaymentActions = ({
       if (error) throw error;
 
       if (data.success) {
+        setLocalCheckoutId(data.checkoutId);
         setCheckoutId(data.checkoutId);
-        console.log('Payment initiated and sent to reader:', data.checkoutId);
+        console.log('Payment initiated with webhook support:', data.checkoutId);
+        console.log('Webhook URL configured:', data.webhookUrl);
+        
+        // The payment status will now be updated via real-time webhook
+        // No need for polling - the webhook will notify us instantly
       } else {
         throw new Error(data.error || 'Payment creation failed');
       }
@@ -55,6 +63,7 @@ export const usePaymentActions = ({
   };
 
   return {
-    initiatePayment
+    initiatePayment,
+    checkoutId
   };
 };

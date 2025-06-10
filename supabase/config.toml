@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.sumup-readers]
 verify_jwt = false
+
+[functions.sumup-webhook]
+verify_jwt = false

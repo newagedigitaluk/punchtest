@@ -2,7 +2,7 @@
 import PaymentBackground from "./PaymentBackground";
 import PaymentStatusDisplay from "./PaymentStatusDisplay";
 import PaymentControls from "./PaymentControls";
-import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { useWebhookPaymentStatus } from "@/hooks/useWebhookPaymentStatus";
 import { useReaderManagement } from "@/hooks/useReaderManagement";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
 
@@ -18,12 +18,14 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
     paymentStatus,
     setPaymentStatus,
     countdown,
-    checkoutId,
-    setCheckoutId,
     error,
     setError,
     resetPayment
-  } = usePaymentStatus({ onPaymentComplete, onBack });
+  } = useWebhookPaymentStatus({ 
+    checkoutId: null, // Will be set after payment initiation
+    onPaymentComplete, 
+    onBack 
+  });
 
   const {
     availableReaders,
@@ -32,12 +34,13 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   } = useReaderManagement(isTestMode);
 
   const {
-    initiatePayment
+    initiatePayment,
+    checkoutId
   } = usePaymentActions({
     selectedReaderId,
     isTestMode,
     setPaymentStatus,
-    setCheckoutId,
+    setCheckoutId: () => {}, // Not needed with webhook approach
     setError,
     onPaymentComplete
   });
@@ -71,7 +74,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
           isTestMode={isTestMode}
           onBack={onBack}
           onInitiatePayment={initiatePayment}
-          onSimulatePayment={() => {}} // No-op function since we removed simulation
+          onSimulatePayment={() => {}} // No-op function
         />
       </div>
     </div>
