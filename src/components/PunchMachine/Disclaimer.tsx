@@ -56,7 +56,7 @@ const Disclaimer = ({ onAccept, onBack }: DisclaimerProps) => {
             <Checkbox 
               checked={accepted}
               onCheckedChange={(checked) => setAccepted(checked as boolean)}
-              className="w-8 h-8 mr-4 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+              className="w-8 h-8 mr-4 border-2 border-white bg-white/10 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white"
             />
             <span className="group-hover:text-yellow-400 transition-colors duration-200">
               I accept the terms above
