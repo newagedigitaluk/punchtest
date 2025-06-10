@@ -60,8 +60,8 @@ serve(async (req) => {
     if (status === 'successful') {
       console.log('Payment successful - triggering punch machine')
       
-      // Your actual ngrok tunnel URL
-      const punchMachineUrl = 'https://cunning-burro-similarly.ngrok-free.app/webhook/payment-complete'
+      // Updated webhook URL to use just the domain
+      const punchMachineUrl = 'https://cunning-burro-similarly.ngrok-free.app'
       
       try {
         const triggerResponse = await supabase.functions.invoke('punch-trigger', {
