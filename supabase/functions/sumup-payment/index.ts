@@ -62,7 +62,7 @@ serve(async (req) => {
       throw new Error(`Reader is not paired. Current status: ${readerData.status}`)
     }
 
-    // Create checkout directly on the reader using the Reader Checkout API
+    // Create Reader Checkout using the correct API format from documentation
     const checkoutPayload = {
       description: 'Punch Power Machine Payment',
       total_amount: {
@@ -73,6 +73,7 @@ serve(async (req) => {
 
     console.log('Creating reader checkout with payload:', JSON.stringify(checkoutPayload))
 
+    // Use the correct Reader Checkout API endpoint from the documentation
     const checkoutResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}`, {
       method: 'POST',
       headers: {
@@ -91,10 +92,24 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Reader checkout created successfully:', JSON.stringify(checkoutData))
 
+    // Extract checkout ID from the response
+    let checkoutId = null
+    if (checkoutData.data && checkoutData.data.checkout_id) {
+      checkoutId = checkoutData.data.checkout_id
+    } else if (checkoutData.data && checkoutData.data.id) {
+      checkoutId = checkoutData.data.id
+    } else if (checkoutData.id) {
+      checkoutId = checkoutData.id
+    } else if (checkoutData.checkout_id) {
+      checkoutId = checkoutData.checkout_id
+    }
+
+    console.log('Extracted checkout ID:', checkoutId)
+
     return new Response(
       JSON.stringify({
         success: true,
-        checkoutId: checkoutData.data?.checkout_id || checkoutData.data?.id,
+        checkoutId: checkoutId,
         amount: amount,
         currency: currency,
         readerId: readerId,
@@ -103,7 +118,8 @@ serve(async (req) => {
         debug: {
           merchantCode: merchantCode,
           isTestMode: isTestMode,
-          readerStatus: readerData.status
+          readerStatus: readerData.status,
+          rawResponse: checkoutData
         }
       }),
       {
