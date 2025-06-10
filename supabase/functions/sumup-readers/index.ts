@@ -8,8 +8,9 @@ const corsHeaders = {
 
 interface ReadersRequest {
   isTestMode: boolean
-  action: 'list' | 'pair'
+  action: 'list' | 'pair' | 'unpair'
   pairingCode?: string
+  readerId?: string
 }
 
 serve(async (req) => {
@@ -18,20 +19,24 @@ serve(async (req) => {
   }
 
   try {
-    const { isTestMode = true, action, pairingCode }: ReadersRequest = await req.json()
+    const { isTestMode = true, action, pairingCode, readerId }: ReadersRequest = await req.json()
 
     const apiKey = isTestMode 
       ? Deno.env.get('SUMUP_TEST_API_KEY')
       : Deno.env.get('SUMUP_LIVE_API_KEY')
+    
+    const merchantId = isTestMode
+      ? Deno.env.get('SUMUP_TEST_MERCHANT_ID')
+      : Deno.env.get('SUMUP_LIVE_MERCHANT_ID')
 
-    if (!apiKey) {
-      throw new Error('SumUp API key not configured')
+    if (!apiKey || !merchantId) {
+      throw new Error('SumUp API key or merchant ID not configured')
     }
 
     if (action === 'list') {
       console.log('Fetching card readers list')
       
-      const readersResponse = await fetch('https://api.sumup.com/v0.1/me/card-readers', {
+      const readersResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
@@ -47,7 +52,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          readers: readersData
+          readers: readersData.items || []
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -57,7 +62,7 @@ serve(async (req) => {
     } else if (action === 'pair' && pairingCode) {
       console.log(`Pairing reader with code: ${pairingCode}`)
       
-      const pairResponse = await fetch('https://api.sumup.com/v0.1/me/card-readers', {
+      const pairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -85,9 +90,36 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
+
+    } else if (action === 'unpair' && readerId) {
+      console.log(`Unpairing reader with ID: ${readerId}`)
+      
+      const unpairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers/${readerId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!unpairResponse.ok) {
+        const errorData = await unpairResponse.text()
+        console.error('Unpair error:', errorData)
+        throw new Error(`Unpair failed: ${unpairResponse.status}`)
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Reader unpaired successfully'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
-    throw new Error('Invalid action or missing pairing code')
+    throw new Error('Invalid action or missing required parameters')
 
   } catch (error) {
     console.error('Readers API error:', error)

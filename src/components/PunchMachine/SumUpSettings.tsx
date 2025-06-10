@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Wifi, WifiOff, CheckCircle, AlertCircle } from "lucide-react";
+import { CreditCard, Wifi, WifiOff, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
 
 interface SumUpSettingsProps {
   onBack: () => void;
@@ -70,6 +70,37 @@ const SumUpSettings = ({ onBack }: SumUpSettingsProps) => {
     } catch (err) {
       console.error('Failed to pair reader:', err);
       setStatus('Failed to pair reader');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unpairReader = async (readerId: string, readerName: string) => {
+    if (!confirm(`Are you sure you want to unpair "${readerName}"? You will need to manually disconnect it from the device as well.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sumup-readers', {
+        body: { 
+          isTestMode, 
+          action: 'unpair', 
+          readerId 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setStatus(`Reader "${readerName}" unpaired successfully! Please manually disconnect it from the device.`);
+        await fetchReaders(); // Refresh the list
+      } else {
+        setStatus(`Unpair failed: ${data.error}`);
+      }
+    } catch (err) {
+      console.error('Failed to unpair reader:', err);
+      setStatus('Failed to unpair reader');
     } finally {
       setLoading(false);
     }
@@ -187,21 +218,62 @@ const SumUpSettings = ({ onBack }: SumUpSettingsProps) => {
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <div>
                         <div className="font-medium text-slate-900">{reader.name || 'SumUp Reader'}</div>
-                        <div className="text-sm text-slate-600">ID: {reader.card_reader_id}</div>
+                        <div className="text-sm text-slate-600">ID: {reader.id}</div>
+                        <div className="text-xs text-slate-500">Device: {reader.device?.identifier}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-green-600">
-                        {reader.status || 'Active'}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-green-600">
+                          {reader.status || 'Active'}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {reader.device?.model || 'Unknown'}
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {reader.last_four ? `****${reader.last_four}` : 'Ready'}
-                      </div>
+                      <Button
+                        onClick={() => unpairReader(reader.id, reader.name || 'Reader')}
+                        disabled={loading}
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Instructions Card */}
+        <Card className="mt-6 bg-blue-50 border-blue-300 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-blue-900">
+              📋 Manual Steps Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-blue-800">
+            <div>
+              <strong>After unpairing a reader:</strong>
+              <ol className="list-decimal ml-5 mt-2 space-y-1">
+                <li>Open the menu drawer on your Solo device</li>
+                <li>Go to Connections</li>
+                <li>Select API</li>
+                <li>Tap on Disconnect</li>
+              </ol>
+            </div>
+            <div className="pt-2 border-t border-blue-200">
+              <strong>To pair a new reader:</strong>
+              <ol className="list-decimal ml-5 mt-2 space-y-1">
+                <li>Turn on the Solo reader (don't log in)</li>
+                <li>Open menu drawer → Connections → API</li>
+                <li>Tap "Connect" to get the pairing code</li>
+                <li>Enter the code above and click "Pair Reader"</li>
+              </ol>
+            </div>
           </CardContent>
         </Card>
 
