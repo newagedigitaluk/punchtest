@@ -29,7 +29,7 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
     
     if (paymentStatus === 'processing' && checkoutId) {
       let attempts = 0;
-      const maxAttempts = 30; // 30 attempts over ~2 minutes
+      const maxAttempts = 20; // 20 attempts over ~80 seconds (3s delay + 4s intervals)
       
       const checkStatus = async () => {
         attempts++;
@@ -63,7 +63,7 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
           
           // If we've reached max attempts, treat as failed
           if (attempts >= maxAttempts) {
-            console.log('Max payment status check attempts reached - payment may have timed out');
+            console.log('Max payment status check attempts reached - payment verification timed out');
             setPaymentStatus('failed');
             setError('Payment verification timed out. Please check your SumUp reader and try again.');
             return;
