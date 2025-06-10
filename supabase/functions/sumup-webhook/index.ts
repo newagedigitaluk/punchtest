@@ -19,18 +19,19 @@ serve(async (req) => {
     const webhookData = await req.json()
     console.log('Webhook payload:', JSON.stringify(webhookData, null, 2))
 
-    // Extract payment information from the webhook
+    // Extract payment information from the webhook - SumUp sends status in payload
     const { 
-      id: transactionId,
-      status,
-      amount,
-      currency,
-      client_transaction_id,
-      checkout_reference,
-      transaction_code
+      id: eventId,
+      event_type,
+      payload: {
+        client_transaction_id,
+        status,
+        transaction_id,
+        merchant_code
+      }
     } = webhookData
 
-    console.log(`Webhook received for transaction ${transactionId || client_transaction_id}: ${status}`)
+    console.log(`Webhook received for transaction ${client_transaction_id}: ${status}`)
 
     // Initialize Supabase client for real-time updates
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -38,17 +39,16 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Broadcast the payment status update to all connected clients
-    const channelName = `payment-${client_transaction_id || transactionId}`
+    const channelName = `payment-${client_transaction_id}`
     
     await supabase.channel(channelName).send({
       type: 'broadcast',
       event: 'payment_update',
       payload: {
-        transactionId: transactionId || client_transaction_id,
+        transactionId: transaction_id,
+        clientTransactionId: client_transaction_id,
         status: status,
-        amount: amount,
-        currency: currency,
-        transactionCode: transaction_code,
+        eventType: event_type,
         timestamp: new Date().toISOString(),
         source: 'webhook'
       }
@@ -61,7 +61,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: 'Webhook processed successfully',
-        transactionId: transactionId || client_transaction_id,
+        clientTransactionId: client_transaction_id,
         status: status
       }),
       {

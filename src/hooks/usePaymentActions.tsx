@@ -19,8 +19,6 @@ export const usePaymentActions = ({
   setError,
   onPaymentComplete
 }: UsePaymentActionsProps) => {
-  const [checkoutId, setLocalCheckoutId] = useState<string | null>(null);
-
   const initiatePayment = async () => {
     if (!selectedReaderId) {
       setError('No SumUp reader selected. Please check SumUp settings.');
@@ -45,9 +43,9 @@ export const usePaymentActions = ({
       if (error) throw error;
 
       if (data.success) {
-        setLocalCheckoutId(data.checkoutId);
-        setCheckoutId(data.checkoutId);
-        console.log('Payment initiated with webhook support:', data.checkoutId);
+        const clientTransactionId = data.clientTransactionId;
+        setCheckoutId(clientTransactionId);
+        console.log('Payment initiated with webhook support:', clientTransactionId);
         console.log('Webhook URL configured:', data.webhookUrl);
         
         // The payment status will now be updated via real-time webhook
@@ -63,7 +61,6 @@ export const usePaymentActions = ({
   };
 
   return {
-    initiatePayment,
-    checkoutId
+    initiatePayment
   };
 };

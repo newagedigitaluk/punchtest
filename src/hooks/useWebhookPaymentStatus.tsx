@@ -42,17 +42,17 @@ export const useWebhookPaymentStatus = ({
       .on('broadcast', { event: 'payment_update' }, (payload) => {
         console.log('Received real-time payment update:', payload);
         
-        const { status, transactionId, amount, currency, source } = payload.payload;
+        const { status, clientTransactionId, source } = payload.payload;
         
-        console.log(`Payment update: ${status} for transaction ${transactionId} (source: ${source})`);
+        console.log(`Payment update: ${status} for transaction ${clientTransactionId} (source: ${source})`);
 
-        if (status === 'SUCCESSFUL' || status === 'PAID' || status === 'COMPLETED') {
+        if (status === 'successful') {
           console.log('Payment successful! Transitioning to success state.');
           setPaymentStatus('success');
           setTimeout(() => {
             onPaymentComplete();
           }, 2000);
-        } else if (status === 'FAILED' || status === 'CANCELLED' || status === 'DECLINED') {
+        } else if (status === 'failed' || status === 'cancelled' || status === 'declined') {
           console.log('Payment failed or cancelled');
           setPaymentStatus('failed');
           setError('Payment was cancelled or failed');

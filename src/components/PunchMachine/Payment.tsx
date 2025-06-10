@@ -5,6 +5,7 @@ import PaymentControls from "./PaymentControls";
 import { useWebhookPaymentStatus } from "@/hooks/useWebhookPaymentStatus";
 import { useReaderManagement } from "@/hooks/useReaderManagement";
 import { usePaymentActions } from "@/hooks/usePaymentActions";
+import { useState } from "react";
 
 interface PaymentProps {
   onPaymentComplete: () => void;
@@ -13,6 +14,7 @@ interface PaymentProps {
 
 const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   const isTestMode = true;
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
   
   const {
     paymentStatus,
@@ -22,7 +24,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
     setError,
     resetPayment
   } = useWebhookPaymentStatus({ 
-    checkoutId: null, // Will be set after payment initiation
+    checkoutId, 
     onPaymentComplete, 
     onBack 
   });
@@ -34,13 +36,12 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   } = useReaderManagement(isTestMode);
 
   const {
-    initiatePayment,
-    checkoutId
+    initiatePayment
   } = usePaymentActions({
     selectedReaderId,
     isTestMode,
     setPaymentStatus,
-    setCheckoutId: () => {}, // Not needed with webhook approach
+    setCheckoutId,
     setError,
     onPaymentComplete
   });
