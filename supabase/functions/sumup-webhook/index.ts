@@ -60,8 +60,8 @@ serve(async (req) => {
     if (status === 'successful') {
       console.log('Payment successful - triggering punch machine')
       
-      // Your actual Cloudflare tunnel URL
-      const punchMachineUrl = 'https://campaign-producing-geographic-unit.trycloudflare.com/webhook/payment-complete'
+      // Your actual ngrok tunnel URL
+      const punchMachineUrl = 'https://cunning-burro-similarly.ngrok-free.app/webhook/payment-complete'
       
       try {
         const triggerResponse = await supabase.functions.invoke('punch-trigger', {
