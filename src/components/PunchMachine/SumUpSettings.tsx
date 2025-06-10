@@ -167,8 +167,8 @@ const SumUpSettings = ({ onBack }: SumUpSettingsProps) => {
                   id="pairingCode"
                   value={pairingCode}
                   onChange={(e) => setPairingCode(e.target.value)}
-                  placeholder="Enter 4-digit pairing code"
-                  maxLength={4}
+                  placeholder="Enter 8-9 character pairing code"
+                  maxLength={9}
                   className="bg-white border-slate-300 text-slate-900"
                 />
               </div>
