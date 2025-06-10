@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 
 interface DisclaimerProps {
@@ -52,11 +53,10 @@ const Disclaimer = ({ onAccept, onBack }: DisclaimerProps) => {
 
         <div className="mb-6 bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-600">
           <label className="flex items-center justify-center text-2xl cursor-pointer group">
-            <input 
-              type="checkbox" 
+            <Checkbox 
               checked={accepted}
-              onChange={(e) => setAccepted(e.target.checked)}
-              className="w-6 h-6 mr-4 accent-red-500 cursor-pointer"
+              onCheckedChange={(checked) => setAccepted(checked as boolean)}
+              className="w-8 h-8 mr-4 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
             />
             <span className="group-hover:text-yellow-400 transition-colors duration-200">
               I accept the terms above
