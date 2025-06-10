@@ -56,6 +56,32 @@ serve(async (req) => {
 
     console.log(`Broadcasted payment update for ${channelName}:`, status)
 
+    // If payment was successful, trigger the punch machine
+    if (status === 'successful') {
+      console.log('Payment successful - triggering punch machine')
+      
+      // TODO: Replace with your actual Cloudflare tunnel URL
+      const punchMachineUrl = 'https://punch.yourdomain.com/webhook/payment-complete'
+      
+      try {
+        const triggerResponse = await supabase.functions.invoke('punch-trigger', {
+          body: {
+            clientTransactionId: client_transaction_id,
+            punchMachineUrl: punchMachineUrl
+          }
+        })
+
+        if (triggerResponse.error) {
+          console.error('Failed to trigger punch machine:', triggerResponse.error)
+        } else {
+          console.log('Punch machine triggered successfully:', triggerResponse.data)
+        }
+      } catch (triggerError) {
+        console.error('Error triggering punch machine:', triggerError)
+        // Don't fail the webhook response even if punch trigger fails
+      }
+    }
+
     // Return success response to SumUp
     return new Response(
       JSON.stringify({
