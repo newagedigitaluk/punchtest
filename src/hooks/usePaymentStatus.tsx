@@ -23,13 +23,13 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
     }
   }, [countdown, paymentStatus, onBack]);
 
-  // Payment status polling - simplified for testing
+  // Payment status polling
   useEffect(() => {
     let statusInterval: NodeJS.Timeout;
     
     if (paymentStatus === 'processing' && checkoutId) {
       let attempts = 0;
-      const maxAttempts = 8; // Reduced to 8 attempts over ~30 seconds
+      const maxAttempts = 30; // 30 attempts over ~2 minutes
       
       const checkStatus = async () => {
         attempts++;
@@ -37,7 +37,11 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
           console.log(`Payment status check attempt ${attempts}/${maxAttempts} for checkout ${checkoutId}`);
           
           const { data, error } = await supabase.functions.invoke('sumup-status', {
-            body: { checkoutId, isTestMode: true }
+            body: { 
+              checkoutId, 
+              isTestMode: true,
+              checkAttempt: attempts 
+            }
           });
 
           if (error) throw error;
@@ -57,25 +61,19 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
             return;
           }
           
-          // If we've reached max attempts, just proceed (for development)
+          // If we've reached max attempts, treat as failed
           if (attempts >= maxAttempts) {
-            console.log('Max payment status check attempts reached - simulating success for development');
-            setPaymentStatus('success');
-            setTimeout(() => {
-              onPaymentComplete();
-            }, 2000);
+            console.log('Max payment status check attempts reached - payment may have timed out');
+            setPaymentStatus('failed');
+            setError('Payment verification timed out. Please check your SumUp reader and try again.');
             return;
           }
           
         } catch (err) {
           console.error('Status check failed:', err);
           if (attempts >= maxAttempts) {
-            // For development, proceed anyway
-            console.log('Status check failed but proceeding for development');
-            setPaymentStatus('success');
-            setTimeout(() => {
-              onPaymentComplete();
-            }, 2000);
+            setPaymentStatus('failed');
+            setError('Payment verification failed. Please try again.');
           }
         }
       };

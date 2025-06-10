@@ -9,6 +9,7 @@ const corsHeaders = {
 interface StatusRequest {
   checkoutId: string
   isTestMode: boolean
+  checkAttempt?: number
 }
 
 serve(async (req) => {
@@ -17,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { checkoutId, isTestMode = true }: StatusRequest = await req.json()
+    const { checkoutId, isTestMode = true, checkAttempt = 1 }: StatusRequest = await req.json()
 
     const apiKey = isTestMode 
       ? Deno.env.get('SUMUP_TEST_API_KEY')
@@ -31,7 +32,7 @@ serve(async (req) => {
       throw new Error('SumUp credentials not configured')
     }
 
-    console.log(`Checking status for checkout ID: ${checkoutId}`)
+    console.log(`Checking status for checkout ID: ${checkoutId} (attempt ${checkAttempt})`)
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
@@ -184,12 +185,12 @@ serve(async (req) => {
       }
     }
 
-    // If we get here, transaction not found - but for testing, let's simulate success after 30 seconds
-    console.log(`Transaction ${checkoutId} not found in any endpoint`)
+    // If we get here, transaction not found
+    console.log(`Transaction ${checkoutId} not found in any endpoint (attempt ${checkAttempt})`)
     
-    // For development/testing: simulate payment success after some time
-    if (isTestMode) {
-      console.log('Test mode: Simulating payment completion for development')
+    // For test mode: only simulate success after sufficient attempts (15+ attempts = ~60+ seconds)
+    if (isTestMode && checkAttempt >= 15) {
+      console.log('Test mode: Simulating payment completion after sufficient wait time')
       return new Response(
         JSON.stringify({
           success: true,
@@ -197,7 +198,7 @@ serve(async (req) => {
           amount: 1.00,
           currency: 'GBP',
           transactionId: checkoutId,
-          message: 'Simulated payment success for testing',
+          message: 'Simulated payment success for testing after waiting',
           simulated: true
         }),
         {
@@ -210,7 +211,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         status: 'PENDING',
-        message: 'Transaction not found - may still be processing'
+        message: 'Transaction not found - may still be processing',
+        attempt: checkAttempt
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
