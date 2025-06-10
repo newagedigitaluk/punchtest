@@ -34,9 +34,13 @@ serve(async (req) => {
       throw new Error('SumUp credentials not configured')
     }
 
-    console.log(`Creating SumUp checkout for ${amount} ${currency} in ${isTestMode ? 'test' : 'live'} mode`)
+    if (!readerId) {
+      throw new Error('Reader ID is required to send payment to reader')
+    }
 
-    // Create checkout with SumUp API
+    console.log(`Creating SumUp checkout for ${amount} ${currency} in ${isTestMode ? 'test' : 'live'} mode with reader ${readerId}`)
+
+    // Create checkout with SumUp API - ensuring it's sent to the reader
     const checkoutResponse = await fetch('https://api.sumup.com/v0.1/checkouts', {
       method: 'POST',
       headers: {
@@ -50,18 +54,46 @@ serve(async (req) => {
         merchant_code: merchantId,
         description: 'Punch Power Machine Payment',
         pay_to_email: isTestMode ? 'test@punchpower.com' : 'payments@punchpower.com',
-        ...(readerId && { reader_id: readerId })
+        card_reader_id: readerId, // Use card_reader_id instead of reader_id
+        payment_type: 'card'
       })
     })
 
     if (!checkoutResponse.ok) {
       const errorData = await checkoutResponse.text()
       console.error('SumUp API Error:', errorData)
-      throw new Error(`SumUp API error: ${checkoutResponse.status}`)
+      throw new Error(`SumUp API error: ${checkoutResponse.status} - ${errorData}`)
     }
 
     const checkoutData = await checkoutResponse.json()
-    console.log('Checkout created:', checkoutData.id)
+    console.log('Checkout created successfully:', checkoutData.id)
+
+    // After creating checkout, try to send it to the reader
+    if (checkoutData.id) {
+      console.log(`Attempting to send payment to reader ${readerId}`)
+      
+      // Send the payment to the reader
+      const readerResponse = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutData.id}/process`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payment_type: 'card',
+          card_reader_id: readerId
+        })
+      })
+
+      if (!readerResponse.ok) {
+        const readerErrorData = await readerResponse.text()
+        console.error('Failed to send payment to reader:', readerErrorData)
+        // Don't throw here, as the checkout was created successfully
+        console.log('Payment created but not sent to reader automatically')
+      } else {
+        console.log('Payment successfully sent to reader')
+      }
+    }
 
     return new Response(
       JSON.stringify({
@@ -70,7 +102,8 @@ serve(async (req) => {
         checkoutReference: checkoutData.checkout_reference,
         amount: checkoutData.amount,
         currency: checkoutData.currency,
-        status: checkoutData.status
+        status: checkoutData.status,
+        readerId: readerId
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
