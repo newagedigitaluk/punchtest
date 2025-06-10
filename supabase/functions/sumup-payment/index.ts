@@ -62,7 +62,7 @@ serve(async (req) => {
       throw new Error(`Reader is not paired. Current status: ${readerData.status}`)
     }
 
-    // Create Reader Checkout using the correct API format from documentation
+    // Create Reader Checkout using the exact API format from the documentation
     const checkoutPayload = {
       description: 'Punch Power Machine Payment',
       total_amount: {
@@ -72,8 +72,9 @@ serve(async (req) => {
     }
 
     console.log('Creating reader checkout with payload:', JSON.stringify(checkoutPayload))
+    console.log('Using endpoint:', `https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}`)
 
-    // Use the correct Reader Checkout API endpoint from the documentation
+    // Use the correct Reader Checkout API endpoint: POST /v0.1/merchants/{merchant_code}/readers/{id}
     const checkoutResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}`, {
       method: 'POST',
       headers: {
@@ -82,6 +83,9 @@ serve(async (req) => {
       },
       body: JSON.stringify(checkoutPayload)
     })
+
+    console.log('Checkout response status:', checkoutResponse.status)
+    console.log('Checkout response headers:', JSON.stringify([...checkoutResponse.headers.entries()]))
 
     if (!checkoutResponse.ok) {
       const errorData = await checkoutResponse.text()
@@ -92,7 +96,7 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Reader checkout created successfully:', JSON.stringify(checkoutData))
 
-    // Extract checkout ID from the response
+    // Extract checkout ID from the response based on SumUp API documentation
     let checkoutId = null
     if (checkoutData.data && checkoutData.data.checkout_id) {
       checkoutId = checkoutData.data.checkout_id
