@@ -38,11 +38,74 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     }
 
-    // Try multiple endpoints like the Python code did
+    // Try to get recent transactions first - this is more reliable for card reader payments
+    console.log('Fetching recent transactions to find completed payment')
+    
+    const recentUrl = `https://api.sumup.com/v0.1/me/transactions?limit=20`
+    console.log(`Fetching recent transactions from: ${recentUrl}`)
+    
+    const recentResponse = await fetch(recentUrl, { headers })
+    
+    console.log(`Recent transactions response status: ${recentResponse.status}`)
+
+    if (recentResponse.ok) {
+      const recentData = await recentResponse.json()
+      console.log(`Found ${recentData.length || 0} recent transactions`)
+      
+      // Look for our transaction by client_transaction_id or transaction_id
+      let foundTransaction = null
+      
+      if (Array.isArray(recentData)) {
+        foundTransaction = recentData.find((t: any) => 
+          t.client_transaction_id === checkoutId || 
+          t.id === checkoutId ||
+          t.transaction_id === checkoutId
+        )
+      } else if (recentData.items && Array.isArray(recentData.items)) {
+        foundTransaction = recentData.items.find((t: any) => 
+          t.client_transaction_id === checkoutId || 
+          t.id === checkoutId ||
+          t.transaction_id === checkoutId
+        )
+      }
+      
+      if (foundTransaction) {
+        console.log('Found transaction in recent list:', JSON.stringify(foundTransaction, null, 2))
+        
+        let status = 'PENDING'
+        
+        // Check various status fields
+        if (foundTransaction.status === 'SUCCESSFUL' || foundTransaction.simple_status === 'SUCCESSFUL') {
+          status = 'PAID'
+        } else if (foundTransaction.status === 'FAILED' || foundTransaction.status === 'CANCELLED' ||
+                  foundTransaction.simple_status === 'FAILED' || foundTransaction.simple_status === 'CANCELLED') {
+          status = 'FAILED'
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            status: status,
+            amount: foundTransaction.amount,
+            currency: foundTransaction.currency,
+            transactionId: foundTransaction.id,
+            transactionCode: foundTransaction.transaction_code,
+            date: foundTransaction.timestamp || foundTransaction.date,
+            endpoint_used: 'recent_transactions_search',
+            rawResponse: foundTransaction
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+    }
+
+    // If recent transactions didn't work, try direct endpoints
     const endpointsToTry = [
       `https://api.sumup.com/v0.1/me/transactions/${checkoutId}`,
-      `https://api.sumup.com/v0.1/merchants/${merchantCode}/checkouts/${checkoutId}`,
-      `https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions/${checkoutId}`
+      `https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions/${checkoutId}`,
+      `https://api.sumup.com/v0.1/merchants/${merchantCode}/checkouts/${checkoutId}`
     ]
 
     for (const endpoint of endpointsToTry) {
@@ -60,9 +123,8 @@ serve(async (req) => {
           const transactionData = await response.json()
           console.log(`Found transaction data:`, JSON.stringify(transactionData, null, 2))
           
-          // Check for different possible status field names
           let status = 'PENDING'
-          const statusFields = ['status', 'transaction_status', 'payment_status', 'state']
+          const statusFields = ['status', 'transaction_status', 'payment_status', 'state', 'simple_status']
           
           for (const statusField of statusFields) {
             if (transactionData[statusField]) {
@@ -73,8 +135,6 @@ serve(async (req) => {
                 status = 'PAID'
               } else if (foundStatus === 'FAILED' || foundStatus === 'CANCELLED') {
                 status = 'FAILED'
-              } else {
-                status = 'PENDING'
               }
               break
             }
@@ -99,61 +159,9 @@ serve(async (req) => {
         } else {
           const errorText = await response.text()
           console.log(`Error from ${endpoint}: ${response.status} - ${errorText}`)
-          // Continue to next endpoint
         }
       } catch (endpointError) {
         console.log(`Exception with endpoint ${endpoint}:`, endpointError)
-        // Continue to next endpoint
-      }
-    }
-
-    // If all direct endpoints failed, fall back to searching recent transactions
-    console.log('All direct endpoints failed, falling back to recent transactions search')
-    
-    const recentUrl = `https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions?limit=50`
-    console.log(`Fetching recent transactions from: ${recentUrl}`)
-    
-    const recentResponse = await fetch(recentUrl, { headers })
-    
-    console.log(`Recent transactions response status: ${recentResponse.status}`)
-
-    if (recentResponse.ok) {
-      const recentData = await recentResponse.json()
-      console.log(`Found ${recentData.items?.length || 0} recent transactions`)
-      
-      // Look for our transaction by client_transaction_id
-      const foundTransaction = recentData.items?.find((t: any) => 
-        t.client_transaction_id === checkoutId
-      )
-      
-      if (foundTransaction) {
-        console.log('Found transaction in recent list:', JSON.stringify(foundTransaction, null, 2))
-        
-        let status = 'PENDING'
-        
-        if (foundTransaction.status === 'SUCCESSFUL' || foundTransaction.simple_status === 'SUCCESSFUL') {
-          status = 'PAID'
-        } else if (foundTransaction.status === 'FAILED' || foundTransaction.status === 'CANCELLED' ||
-                  foundTransaction.simple_status === 'FAILED' || foundTransaction.simple_status === 'CANCELLED') {
-          status = 'FAILED'
-        }
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            status: status,
-            amount: foundTransaction.amount,
-            currency: foundTransaction.currency,
-            transactionId: foundTransaction.id,
-            transactionCode: foundTransaction.transaction_code,
-            date: foundTransaction.timestamp,
-            endpoint_used: 'recent_transactions_search',
-            rawResponse: foundTransaction
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
       }
     }
 

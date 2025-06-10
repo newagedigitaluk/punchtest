@@ -23,13 +23,20 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
     }
   }, [countdown, paymentStatus, onBack]);
 
-  // Payment status polling
+  // Payment status polling with longer intervals and timeout
   useEffect(() => {
     let statusInterval: NodeJS.Timeout;
+    let statusTimeout: NodeJS.Timeout;
     
     if (paymentStatus === 'processing' && checkoutId) {
-      statusInterval = setInterval(async () => {
+      let attempts = 0;
+      const maxAttempts = 30; // 30 attempts over 2 minutes
+      
+      const checkStatus = async () => {
+        attempts++;
         try {
+          console.log(`Payment status check attempt ${attempts}/${maxAttempts} for checkout ${checkoutId}`);
+          
           const { data, error } = await supabase.functions.invoke('sumup-status', {
             body: { checkoutId, isTestMode: true }
           });
@@ -43,18 +50,45 @@ export const usePaymentStatus = ({ onPaymentComplete, onBack }: UsePaymentStatus
             setTimeout(() => {
               onPaymentComplete();
             }, 2000);
+            return;
           } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
             setPaymentStatus('failed');
             setError('Payment was cancelled or failed');
+            return;
           }
+          
+          // If we've reached max attempts, show timeout message
+          if (attempts >= maxAttempts) {
+            console.log('Max payment status check attempts reached');
+            setPaymentStatus('failed');
+            setError('Payment status check timed out. Please try again.');
+            return;
+          }
+          
         } catch (err) {
           console.error('Status check failed:', err);
+          if (attempts >= maxAttempts) {
+            setPaymentStatus('failed');
+            setError('Failed to check payment status');
+          }
         }
-      }, 2000); // Check every 2 seconds
+      };
+
+      // Start checking immediately, then every 4 seconds
+      checkStatus();
+      statusInterval = setInterval(checkStatus, 4000);
+      
+      // Set overall timeout to 2 minutes
+      statusTimeout = setTimeout(() => {
+        if (statusInterval) clearInterval(statusInterval);
+        setPaymentStatus('failed');
+        setError('Payment check timed out. Please try again.');
+      }, 120000); // 2 minutes
     }
 
     return () => {
       if (statusInterval) clearInterval(statusInterval);
+      if (statusTimeout) clearTimeout(statusTimeout);
     };
   }, [paymentStatus, checkoutId, onPaymentComplete]);
 
