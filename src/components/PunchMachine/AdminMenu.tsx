@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,14 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { Settings, BarChart3, DollarSign, Wrench, Users, History } from "lucide-react";
+import { Settings, BarChart3, DollarSign, Wrench, Users, History, CreditCard } from "lucide-react";
+import SumUpSettings from "./SumUpSettings";
 
 interface AdminMenuProps {
   onExit: () => void;
 }
 
 const AdminMenu = ({ onExit }: AdminMenuProps) => {
-  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'payments' | 'maintenance'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'payments' | 'maintenance' | 'sumup'>('main');
   const [settings, setSettings] = useState({
     pricePerPunch: 1.00,
     difficulty: 'normal',
@@ -26,10 +26,15 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 
   const menuItems = [
     { id: 'settings', title: 'Machine Settings', icon: Settings, description: 'Configure pricing, difficulty, and system settings' },
+    { id: 'sumup', title: 'SumUp Payment', icon: CreditCard, description: 'Configure SumUp payment system and card readers' },
     { id: 'stats', title: 'Statistics', icon: BarChart3, description: 'View usage statistics and performance data' },
     { id: 'payments', title: 'Payment Records', icon: DollarSign, description: 'View transaction history and revenue' },
     { id: 'maintenance', title: 'Maintenance', icon: Wrench, description: 'System diagnostics and maintenance tools' }
   ];
+
+  if (currentView === 'sumup') {
+    return <SumUpSettings onBack={() => setCurrentView('main')} />;
+  }
 
   if (currentView === 'main') {
     return (

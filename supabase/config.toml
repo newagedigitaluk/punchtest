@@ -1,1 +1,11 @@
+
 project_id = "fpazipkhxsxcghwdnvqq"
+
+[functions.sumup-payment]
+verify_jwt = false
+
+[functions.sumup-status]
+verify_jwt = false
+
+[functions.sumup-readers]
+verify_jwt = false

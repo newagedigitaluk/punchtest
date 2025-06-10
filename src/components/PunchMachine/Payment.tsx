@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentProps {
   onPaymentComplete: () => void;
@@ -10,6 +11,9 @@ interface PaymentProps {
 const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   const [paymentStatus, setPaymentStatus] = useState<'waiting' | 'processing' | 'success' | 'failed'>('waiting');
   const [countdown, setCountdown] = useState(60);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  const [isTestMode, setIsTestMode] = useState(true); // This would come from admin settings
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     if (paymentStatus === 'waiting' && countdown > 0) {
@@ -19,6 +23,71 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
       onBack(); // Timeout - go back to start
     }
   }, [countdown, paymentStatus, onBack]);
+
+  // Poll payment status when processing
+  useEffect(() => {
+    let statusInterval: NodeJS.Timeout;
+    
+    if (paymentStatus === 'processing' && checkoutId) {
+      statusInterval = setInterval(async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('sumup-status', {
+            body: { checkoutId, isTestMode }
+          });
+
+          if (error) throw error;
+
+          console.log('Payment status check:', data);
+
+          if (data.status === 'PAID') {
+            setPaymentStatus('success');
+            setTimeout(() => {
+              onPaymentComplete();
+            }, 2000);
+          } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
+            setPaymentStatus('failed');
+            setError('Payment was cancelled or failed');
+          }
+        } catch (err) {
+          console.error('Status check failed:', err);
+        }
+      }, 2000); // Check every 2 seconds
+    }
+
+    return () => {
+      if (statusInterval) clearInterval(statusInterval);
+    };
+  }, [paymentStatus, checkoutId, isTestMode, onPaymentComplete]);
+
+  const initiatePayment = async () => {
+    setPaymentStatus('processing');
+    setError('');
+    
+    try {
+      console.log('Creating SumUp payment...');
+      
+      const { data, error } = await supabase.functions.invoke('sumup-payment', {
+        body: {
+          amount: 1.00,
+          currency: 'GBP',
+          isTestMode
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setCheckoutId(data.checkoutId);
+        console.log('Payment initiated:', data.checkoutId);
+      } else {
+        throw new Error(data.error || 'Payment creation failed');
+      }
+    } catch (err) {
+      console.error('Payment initiation failed:', err);
+      setPaymentStatus('failed');
+      setError('Failed to create payment. Please try again.');
+    }
+  };
 
   const simulatePayment = () => {
     setPaymentStatus('processing');
@@ -52,13 +121,17 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
               </h2>
               <div className="text-6xl mb-6 animate-bounce">💳</div>
               <p className="text-3xl mb-4 font-bold text-yellow-400">Cost: £1.00</p>
-              <p className="text-2xl opacity-90 mb-6">
-                Tap your card on the reader or insert/swipe when ready
-              </p>
               
-              {/* Mock SumUp reader indicator */}
-              <div className="bg-gradient-to-r from-green-500 to-green-400 text-black px-8 py-4 rounded-xl font-bold text-2xl mb-6 shadow-lg">
-                🟢 CARD READER READY
+              <div className="mb-6">
+                <div className="bg-green-500/20 text-green-300 px-6 py-3 rounded-xl font-bold text-xl mb-4 border border-green-500/30">
+                  {isTestMode ? '🧪 TEST MODE' : '🔴 LIVE MODE'}
+                </div>
+                <p className="text-2xl opacity-90 mb-4">
+                  Present your card to the SumUp reader
+                </p>
+                <div className="bg-gradient-to-r from-green-500 to-green-400 text-black px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
+                  🟢 SUMUP READER READY
+                </div>
               </div>
               
               <p className="text-lg opacity-70 bg-gray-800/50 rounded-lg p-3">
@@ -76,14 +149,24 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
                 ← Cancel
               </Button>
               
-              {/* Mock payment button for testing */}
               <Button 
-                onClick={simulatePayment}
+                onClick={initiatePayment}
                 size="lg"
                 className="text-2xl px-12 py-6 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200"
               >
-                💰 Simulate Payment (Test)
+                💳 Start Payment
               </Button>
+              
+              {/* Mock payment button for testing */}
+              {isTestMode && (
+                <Button 
+                  onClick={simulatePayment}
+                  size="lg"
+                  className="text-xl px-8 py-6 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold rounded-xl shadow-xl"
+                >
+                  🎯 Mock Payment
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -94,7 +177,10 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
               Processing Payment...
             </h2>
             <div className="text-6xl mb-6 animate-spin">⏳</div>
-            <p className="text-2xl">Please wait while we process your payment</p>
+            <p className="text-2xl mb-4">Please complete payment on the card reader</p>
+            {checkoutId && (
+              <p className="text-sm opacity-70">Payment ID: {checkoutId}</p>
+            )}
           </div>
         )}
 
@@ -114,9 +200,13 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
               Payment Failed
             </h2>
             <div className="text-6xl mb-6 animate-pulse">❌</div>
-            <p className="text-2xl mb-6">Please try again</p>
+            <p className="text-2xl mb-4">{error || 'Please try again'}</p>
             <Button 
-              onClick={() => setPaymentStatus('waiting')}
+              onClick={() => {
+                setPaymentStatus('waiting');
+                setError('');
+                setCheckoutId(null);
+              }}
               size="lg"
               className="text-2xl px-12 py-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl"
             >
