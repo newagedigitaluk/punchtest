@@ -25,18 +25,18 @@ serve(async (req) => {
       ? Deno.env.get('SUMUP_TEST_API_KEY')
       : Deno.env.get('SUMUP_LIVE_API_KEY')
     
-    const merchantId = isTestMode
+    const merchantCode = isTestMode
       ? Deno.env.get('SUMUP_TEST_MERCHANT_ID')
       : Deno.env.get('SUMUP_LIVE_MERCHANT_ID')
 
-    if (!apiKey || !merchantId) {
-      throw new Error('SumUp API key or merchant ID not configured')
+    if (!apiKey || !merchantCode) {
+      throw new Error('SumUp API key or merchant code not configured')
     }
 
     if (action === 'list') {
-      console.log('Fetching card readers list')
+      console.log('Fetching card readers list using correct API endpoint')
       
-      const readersResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers`, {
+      const readersResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
@@ -44,10 +44,13 @@ serve(async (req) => {
       })
 
       if (!readersResponse.ok) {
-        throw new Error(`SumUp API error: ${readersResponse.status}`)
+        const errorData = await readersResponse.text()
+        console.error('Readers API error:', errorData)
+        throw new Error(`SumUp API error: ${readersResponse.status} - ${errorData}`)
       }
 
       const readersData = await readersResponse.json()
+      console.log('Readers fetched successfully:', JSON.stringify(readersData))
       
       return new Response(
         JSON.stringify({
@@ -62,24 +65,26 @@ serve(async (req) => {
     } else if (action === 'pair' && pairingCode) {
       console.log(`Pairing reader with code: ${pairingCode}`)
       
-      const pairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers`, {
+      const pairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          pairing_code: pairingCode
+          pairing_code: pairingCode,
+          name: `Reader-${pairingCode}`
         })
       })
 
       if (!pairResponse.ok) {
         const errorData = await pairResponse.text()
         console.error('Pairing error:', errorData)
-        throw new Error(`Pairing failed: ${pairResponse.status}`)
+        throw new Error(`Pairing failed: ${pairResponse.status} - ${errorData}`)
       }
 
       const pairData = await pairResponse.json()
+      console.log('Reader paired successfully:', JSON.stringify(pairData))
       
       return new Response(
         JSON.stringify({
@@ -94,7 +99,7 @@ serve(async (req) => {
     } else if (action === 'unpair' && readerId) {
       console.log(`Unpairing reader with ID: ${readerId}`)
       
-      const unpairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantId}/readers/${readerId}`, {
+      const unpairResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -105,7 +110,7 @@ serve(async (req) => {
       if (!unpairResponse.ok) {
         const errorData = await unpairResponse.text()
         console.error('Unpair error:', errorData)
-        throw new Error(`Unpair failed: ${unpairResponse.status}`)
+        throw new Error(`Unpair failed: ${unpairResponse.status} - ${errorData}`)
       }
 
       return new Response(
