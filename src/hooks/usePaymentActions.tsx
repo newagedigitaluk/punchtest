@@ -54,19 +54,7 @@ export const usePaymentActions = ({
     }
   };
 
-  const simulatePayment = () => {
-    setPaymentStatus('processing');
-    // Simulate payment processing
-    setTimeout(() => {
-      setPaymentStatus('success');
-      setTimeout(() => {
-        onPaymentComplete();
-      }, 2000);
-    }, 3000);
-  };
-
   return {
-    initiatePayment,
-    simulatePayment
+    initiatePayment
   };
 };

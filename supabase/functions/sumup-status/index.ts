@@ -185,28 +185,8 @@ serve(async (req) => {
       }
     }
 
-    // If we get here, transaction not found
+    // If we get here, transaction not found - return PENDING status
     console.log(`Transaction ${checkoutId} not found in any endpoint (attempt ${checkAttempt})`)
-    
-    // For test mode: only simulate success after 10+ attempts (~40+ seconds) to allow time for real payments
-    // This gives enough time for a real payment to be processed and appear in the API
-    if (isTestMode && checkAttempt >= 10) {
-      console.log('Test mode: Simulating payment completion after waiting for real payment')
-      return new Response(
-        JSON.stringify({
-          success: true,
-          status: 'PAID',
-          amount: 1.00,
-          currency: 'GBP',
-          transactionId: checkoutId,
-          message: 'Simulated payment success for testing (no real payment detected)',
-          simulated: true
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
     
     return new Response(
       JSON.stringify({

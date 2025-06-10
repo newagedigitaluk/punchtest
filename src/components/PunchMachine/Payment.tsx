@@ -32,8 +32,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   } = useReaderManagement(isTestMode);
 
   const {
-    initiatePayment,
-    simulatePayment
+    initiatePayment
   } = usePaymentActions({
     selectedReaderId,
     isTestMode,
@@ -72,7 +71,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
           isTestMode={isTestMode}
           onBack={onBack}
           onInitiatePayment={initiatePayment}
-          onSimulatePayment={simulatePayment}
+          onSimulatePayment={() => {}} // No-op function since we removed simulation
         />
       </div>
     </div>

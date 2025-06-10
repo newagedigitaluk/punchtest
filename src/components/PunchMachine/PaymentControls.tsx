@@ -41,17 +41,6 @@ const PaymentControls = ({
       >
         💳 Start Payment
       </Button>
-      
-      {/* Mock payment button for testing */}
-      {isTestMode && (
-        <Button 
-          onClick={onSimulatePayment}
-          size="lg"
-          className="text-xl px-8 py-6 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold rounded-xl shadow-xl"
-        >
-          🎯 Mock Payment
-        </Button>
-      )}
     </div>
   );
 };
