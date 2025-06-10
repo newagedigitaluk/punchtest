@@ -37,9 +37,10 @@ serve(async (req) => {
     console.log(`Creating SumUp checkout for ${amount} ${currency} in ${isTestMode ? 'test' : 'live'} mode`)
     console.log(`Using merchant code: ${merchantCode}`)
 
-    // Create checkout using the standard Checkouts API
+    // Create checkout using the correct API structure from documentation
+    const checkoutReference = `punch-${Date.now()}`
     const checkoutPayload = {
-      checkout_reference: `punch-${Date.now()}`, // Unique reference
+      checkout_reference: checkoutReference,
       amount: amount,
       currency: currency,
       merchant_code: merchantCode,
@@ -84,31 +85,39 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Checkout created successfully:', JSON.stringify(checkoutData))
 
-    // If we have a reader ID, try to send the checkout to the reader
-    if (readerId) {
-      console.log(`Attempting to send checkout ${checkoutData.id} to reader ${readerId}`)
+    // Now we need to process the checkout to send it to the reader
+    if (readerId && checkoutData.id) {
+      console.log(`Attempting to process checkout ${checkoutData.id} on reader ${readerId}`)
       
       try {
-        // First verify the reader exists
-        const readerResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}`, {
+        // According to SumUp documentation, we need to process the checkout
+        // This typically involves sending a request to process the payment
+        const processUrl = `https://api.sumup.com/v0.1/checkouts/${checkoutData.id}`
+        
+        const processResponse = await fetch(processUrl, {
+          method: 'PUT',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-          }
+          },
+          body: JSON.stringify({
+            payment_type: 'card',
+            installments: 1
+          })
         })
 
-        if (!readerResponse.ok) {
-          console.warn('Reader verification failed, but checkout was created')
+        console.log('Process response status:', processResponse.status)
+        
+        if (processResponse.ok) {
+          const processData = await processResponse.json()
+          console.log('Checkout processing initiated:', JSON.stringify(processData))
         } else {
-          const readerData = await readerResponse.json()
-          console.log('Reader found:', JSON.stringify(readerData))
-          
-          // Try to process the checkout on the reader
-          // This might require a different API call - let's see what the response tells us
-          console.log('Checkout created and reader verified')
+          const processError = await processResponse.text()
+          console.warn('Failed to process checkout on reader:', processError)
+          // Don't fail the whole request if processing fails
         }
-      } catch (readerError) {
-        console.warn('Reader operation failed but checkout was created:', readerError)
+      } catch (processError) {
+        console.warn('Reader processing failed but checkout was created:', processError)
       }
     }
 
@@ -116,10 +125,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         checkoutId: checkoutData.id,
+        checkoutReference: checkoutReference,
         amount: amount,
         currency: currency,
         readerId: readerId,
-        status: 'PENDING',
+        status: checkoutData.status || 'PENDING',
         debug: {
           merchantCode: merchantCode,
           isTestMode: isTestMode,
