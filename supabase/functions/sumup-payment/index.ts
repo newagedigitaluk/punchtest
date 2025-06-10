@@ -40,23 +40,48 @@ serve(async (req) => {
 
     console.log(`Creating SumUp checkout for ${amount} ${currency} in ${isTestMode ? 'test' : 'live'} mode with reader ${readerId}`)
 
-    // Create checkout with SumUp API - ensuring it's sent to the reader
+    // First, let's verify the reader is available
+    console.log('Checking reader availability...')
+    const readersResponse = await fetch('https://api.sumup.com/v0.1/me/devices', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      }
+    })
+
+    if (readersResponse.ok) {
+      const readersData = await readersResponse.json()
+      console.log('Available readers:', JSON.stringify(readersData))
+      
+      const targetReader = readersData.find((reader: any) => reader.id === readerId)
+      if (!targetReader) {
+        console.error(`Reader ${readerId} not found in available readers`)
+      } else {
+        console.log(`Target reader found:`, JSON.stringify(targetReader))
+      }
+    } else {
+      console.error('Failed to fetch readers:', await readersResponse.text())
+    }
+
+    // Create checkout - try without specifying reader first
+    const checkoutPayload = {
+      checkout_reference: `punch-${Date.now()}`,
+      amount: amount,
+      currency: currency,
+      merchant_code: merchantId,
+      description: 'Punch Power Machine Payment',
+      pay_to_email: isTestMode ? 'test@punchpower.com' : 'payments@punchpower.com'
+    }
+
+    console.log('Creating checkout with payload:', JSON.stringify(checkoutPayload))
+
     const checkoutResponse = await fetch('https://api.sumup.com/v0.1/checkouts', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        checkout_reference: `punch-${Date.now()}`,
-        amount: amount,
-        currency: currency,
-        merchant_code: merchantId,
-        description: 'Punch Power Machine Payment',
-        pay_to_email: isTestMode ? 'test@punchpower.com' : 'payments@punchpower.com',
-        card_reader_id: readerId, // Use card_reader_id instead of reader_id
-        payment_type: 'card'
-      })
+      body: JSON.stringify(checkoutPayload)
     })
 
     if (!checkoutResponse.ok) {
@@ -66,32 +91,60 @@ serve(async (req) => {
     }
 
     const checkoutData = await checkoutResponse.json()
-    console.log('Checkout created successfully:', checkoutData.id)
+    console.log('Checkout created successfully:', JSON.stringify(checkoutData))
 
-    // After creating checkout, try to send it to the reader
+    // Now try to send the payment to the specific reader using multiple approaches
     if (checkoutData.id) {
-      console.log(`Attempting to send payment to reader ${readerId}`)
+      console.log(`Attempting to send payment ${checkoutData.id} to reader ${readerId}`)
       
-      // Send the payment to the reader
-      const readerResponse = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutData.id}/process`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          payment_type: 'card',
-          card_reader_id: readerId
+      // Approach 1: Try the /process endpoint
+      try {
+        const processPayload = {
+          payment_type: 'card'
+        }
+        
+        console.log('Trying /process endpoint with payload:', JSON.stringify(processPayload))
+        
+        const processResponse = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutData.id}/process`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(processPayload)
         })
-      })
 
-      if (!readerResponse.ok) {
-        const readerErrorData = await readerResponse.text()
-        console.error('Failed to send payment to reader:', readerErrorData)
-        // Don't throw here, as the checkout was created successfully
-        console.log('Payment created but not sent to reader automatically')
-      } else {
-        console.log('Payment successfully sent to reader')
+        const processResponseText = await processResponse.text()
+        console.log(`Process response status: ${processResponse.status}`)
+        console.log(`Process response body: ${processResponseText}`)
+
+        if (processResponse.ok) {
+          console.log('Payment successfully initiated via /process endpoint')
+        } else {
+          console.error('Process endpoint failed:', processResponseText)
+          
+          // Approach 2: Try updating the checkout to include the reader
+          console.log('Trying to update checkout with reader ID...')
+          
+          const updateResponse = await fetch(`https://api.sumup.com/v0.1/checkouts/${checkoutData.id}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...checkoutPayload,
+              card_reader_id: readerId,
+              payment_type: 'card'
+            })
+          })
+
+          const updateResponseText = await updateResponse.text()
+          console.log(`Update response status: ${updateResponse.status}`)
+          console.log(`Update response body: ${updateResponseText}`)
+        }
+      } catch (error) {
+        console.error('Error in payment processing:', error)
       }
     }
 
@@ -103,7 +156,11 @@ serve(async (req) => {
         amount: checkoutData.amount,
         currency: checkoutData.currency,
         status: checkoutData.status,
-        readerId: readerId
+        readerId: readerId,
+        debug: {
+          merchantId: merchantId,
+          isTestMode: isTestMode
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
