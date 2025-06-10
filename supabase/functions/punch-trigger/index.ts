@@ -55,13 +55,12 @@ serve(async (req) => {
 
     console.log(`Sending webhook to Pi at: ${punchMachineUrl}`)
 
-    // Send webhook to Raspberry Pi with API key authentication
+    // Send webhook to Raspberry Pi without API key authentication
     const response = await fetch(punchMachineUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'Supabase-PunchMachine/1.0',
-        'X-API-KEY': 'uap|w[L<d)|QST.tUvY#5:x$aM~/!m'
+        'User-Agent': 'Supabase-PunchMachine/1.0'
       },
       body: JSON.stringify(webhookPayload)
     })
