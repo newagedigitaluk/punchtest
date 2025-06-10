@@ -33,90 +33,134 @@ serve(async (req) => {
 
     console.log(`Checking status for transaction: ${checkoutId}`)
 
-    // For Reader API transactions, we need to check transactions, not checkouts
-    // Try multiple endpoints as the exact endpoint for Reader transaction status may vary
-    const endpoints = [
-      `https://api.sumup.com/v0.1/me/transactions/${checkoutId}`,
-      `https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions/${checkoutId}`,
-      `https://api.sumup.com/v0.1/checkouts/${checkoutId}` // Fallback for online checkouts
-    ]
-
-    let lastError = null
+    // For Reader API transactions, we need to check the merchant's transaction history
+    // The checkoutId we have is the client_transaction_id from the Reader API
     
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`Trying endpoint: ${endpoint}`)
+    try {
+      console.log('Fetching merchant transactions to find our payment')
+      
+      const transactionsResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (transactionsResponse.ok) {
+        const transactionsData = await transactionsResponse.json()
+        console.log('Fetched transactions:', transactionsData)
         
-        const statusResponse = await fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          }
-        })
+        // Look for our transaction in the recent transactions
+        // The checkoutId we're looking for might be in various fields
+        const transaction = transactionsData.data?.find((t: any) => 
+          t.client_transaction_id === checkoutId ||
+          t.transaction_id === checkoutId ||
+          t.id === checkoutId ||
+          t.transaction_code === checkoutId
+        )
 
-        if (statusResponse.ok) {
-          const statusData = await statusResponse.json()
-          console.log(`Success from ${endpoint}:`, statusData)
+        if (transaction) {
+          console.log('Found matching transaction:', transaction)
           
-          // Normalize the response structure
+          // Normalize the status
           let status = 'PENDING'
-          let transactionId = null
-          let transactionCode = null
-          let amount = null
-          let currency = null
-          let date = null
-
-          // Handle different response structures
-          if (statusData.status) {
-            // Direct status field
-            status = statusData.status
-          } else if (statusData.transaction_status) {
-            // Alternative status field name
-            status = statusData.transaction_status
-          } else if (statusData.payment_type) {
-            // Some endpoints might have payment_type instead
-            status = statusData.payment_type === 'CARD' ? 'PAID' : 'PENDING'
-          }
-
-          // Extract other fields
-          transactionId = statusData.transaction_id || statusData.id || checkoutId
-          transactionCode = statusData.transaction_code || statusData.code
-          amount = statusData.amount || statusData.total_amount?.value
-          currency = statusData.currency || statusData.total_amount?.currency
-          date = statusData.date || statusData.created_at || statusData.timestamp
-
-          // Convert amount from minor units if needed
-          if (amount && typeof amount === 'number' && amount > 100) {
-            amount = amount / 100 // Convert from minor units
+          if (transaction.status === 'SUCCESSFUL' || transaction.status === 'PAID') {
+            status = 'PAID'
+          } else if (transaction.status === 'FAILED' || transaction.status === 'CANCELLED') {
+            status = 'FAILED'
           }
 
           return new Response(
             JSON.stringify({
               success: true,
               status: status,
-              amount: amount,
-              currency: currency,
-              transactionId: transactionId,
-              transactionCode: transactionCode,
-              date: date,
-              rawResponse: statusData
+              amount: transaction.amount || transaction.total_amount?.value,
+              currency: transaction.currency || transaction.total_amount?.currency,
+              transactionId: transaction.transaction_id || transaction.id,
+              transactionCode: transaction.transaction_code,
+              date: transaction.date || transaction.created_at || transaction.timestamp,
+              rawResponse: transaction
             }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
         } else {
-          lastError = `${endpoint}: ${statusResponse.status}`
-          console.log(`Failed endpoint ${endpoint}: ${statusResponse.status}`)
-        }
-      } catch (error) {
-        lastError = `${endpoint}: ${error.message}`
-        console.log(`Error with endpoint ${endpoint}:`, error.message)
-      }
-    }
+          console.log('Transaction not found in recent transactions, checking individual endpoints')
+          
+          // Fall back to trying individual transaction endpoints
+          const endpoints = [
+            `https://api.sumup.com/v0.1/me/transactions/${checkoutId}`,
+            `https://api.sumup.com/v0.1/merchants/${merchantCode}/transactions/${checkoutId}`,
+            `https://api.sumup.com/v0.1/checkouts/${checkoutId}`
+          ]
 
-    // If all endpoints failed, return the last error
-    throw new Error(`All status check endpoints failed. Last error: ${lastError}`)
+          for (const endpoint of endpoints) {
+            try {
+              console.log(`Trying endpoint: ${endpoint}`)
+              
+              const statusResponse = await fetch(endpoint, {
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json',
+                }
+              })
+
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json()
+                console.log(`Success from ${endpoint}:`, statusData)
+                
+                // Normalize the response structure
+                let status = 'PENDING'
+                if (statusData.status === 'SUCCESSFUL' || statusData.status === 'PAID') {
+                  status = 'PAID'
+                } else if (statusData.status === 'FAILED' || statusData.status === 'CANCELLED') {
+                  status = 'FAILED'
+                }
+
+                return new Response(
+                  JSON.stringify({
+                    success: true,
+                    status: status,
+                    amount: statusData.amount || statusData.total_amount?.value,
+                    currency: statusData.currency || statusData.total_amount?.currency,
+                    transactionId: statusData.transaction_id || statusData.id || checkoutId,
+                    transactionCode: statusData.transaction_code || statusData.code,
+                    date: statusData.date || statusData.created_at || statusData.timestamp,
+                    rawResponse: statusData
+                  }),
+                  {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                  }
+                )
+              } else {
+                console.log(`Failed endpoint ${endpoint}: ${statusResponse.status}`)
+              }
+            } catch (error) {
+              console.log(`Error with endpoint ${endpoint}:`, error.message)
+            }
+          }
+          
+          // If we can't find the transaction anywhere, it might still be processing
+          console.log('Transaction not found, returning PENDING status')
+          return new Response(
+            JSON.stringify({
+              success: true,
+              status: 'PENDING',
+              message: 'Transaction not found in recent transactions - may still be processing'
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+      } else {
+        throw new Error(`Failed to fetch transactions: ${transactionsResponse.status}`)
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+      throw error
+    }
 
   } catch (error) {
     console.error('Status check error:', error)
