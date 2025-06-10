@@ -39,53 +39,53 @@ const Results = ({ power, onRestart, onReset }: ResultsProps) => {
   const { rating, color, emoji, bgColor } = getPowerRating(power);
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${bgColor} flex flex-col items-center justify-center text-white p-8 relative overflow-hidden`}>
+    <div className={`h-screen bg-gradient-to-br ${bgColor} flex flex-col items-center justify-center text-white p-4 relative overflow-hidden`}>
       {/* Celebratory background effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-10 left-10 w-40 h-40 bg-yellow-400/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-20 right-20 w-32 h-32 bg-red-400/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-1/3 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-10 right-10 w-36 h-36 bg-green-400/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-5 left-5 w-20 h-20 bg-yellow-400/30 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute top-10 right-10 w-16 h-16 bg-red-400/30 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-10 left-1/3 w-24 h-24 bg-purple-400/20 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-5 right-5 w-18 h-18 bg-green-400/30 rounded-full blur-2xl animate-pulse"></div>
       </div>
       
       <div className="text-center animate-fade-in relative z-10">
-        <h1 className="text-8xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-white">
+        <h1 className="text-3xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-white">
           🏆 YOUR RESULTS
         </h1>
         
-        <div className="bg-black/50 backdrop-blur-lg rounded-3xl p-12 mb-8 border-4 border-yellow-400/50 shadow-2xl">
-          <div className="text-9xl mb-8 animate-bounce">{emoji}</div>
+        <div className="bg-black/50 backdrop-blur-lg rounded-2xl p-6 mb-4 border-4 border-yellow-400/50 shadow-2xl">
+          <div className="text-5xl mb-4 animate-bounce">{emoji}</div>
           
-          <div className="mb-8">
-            <div className="text-9xl font-bold text-yellow-300 mb-6 animate-pulse">
+          <div className="mb-4">
+            <div className="text-5xl font-bold text-yellow-300 mb-3 animate-pulse">
               {power}
             </div>
-            <div className="text-4xl font-bold text-gray-200">
+            <div className="text-xl font-bold text-gray-200">
               KILOGRAMS
             </div>
           </div>
           
-          <div className={`text-5xl font-bold mb-8 ${color} animate-pulse`}>
+          <div className={`text-2xl font-bold mb-4 ${color} animate-pulse`}>
             {rating}
           </div>
           
-          <div className="text-2xl opacity-90 text-gray-200">
+          <div className="text-lg opacity-90 text-gray-200">
             Amazing punch! Thanks for playing!
           </div>
         </div>
 
-        <div className="mb-8 bg-gray-900/50 rounded-xl p-4">
-          <p className="text-2xl opacity-90">
-            Auto-restart in: <span className="font-bold text-yellow-400 text-3xl">{countdown}s</span>
+        <div className="mb-4 bg-gray-900/50 rounded-xl p-2">
+          <p className="text-lg opacity-90">
+            Auto-restart in: <span className="font-bold text-yellow-400 text-xl">{countdown}s</span>
           </p>
         </div>
 
-        <div className="flex gap-8 justify-center">
+        <div className="flex gap-4 justify-center">
           <Button 
             onClick={onReset}
             variant="outline"
             size="lg"
-            className="text-2xl px-12 py-6 bg-gray-800/50 text-gray-200 border-2 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500 transition-all duration-200"
+            className="text-lg px-8 py-4 bg-gray-800 text-white border-2 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500 transition-all duration-200"
           >
             🏠 Start Over
           </Button>
@@ -93,13 +93,13 @@ const Results = ({ power, onRestart, onReset }: ResultsProps) => {
           <Button 
             onClick={onRestart}
             size="lg"
-            className="text-2xl px-12 py-6 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200"
+            className="text-lg px-8 py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             🔄 Play Again (£1)
           </Button>
         </div>
 
-        <div className="mt-10 text-lg opacity-70 bg-gray-800/30 rounded-lg p-4">
+        <div className="mt-4 text-sm opacity-70 bg-gray-800/30 rounded-lg p-2">
           <p>📱 Share your score with friends!</p>
         </div>
       </div>
