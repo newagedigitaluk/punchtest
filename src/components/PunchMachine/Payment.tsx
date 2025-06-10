@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +11,37 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   const [paymentStatus, setPaymentStatus] = useState<'waiting' | 'processing' | 'success' | 'failed'>('waiting');
   const [countdown, setCountdown] = useState(60);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
-  const [isTestMode, setIsTestMode] = useState(true); // This would come from admin settings
+  const [isTestMode, setIsTestMode] = useState(true);
   const [error, setError] = useState<string>('');
+  const [availableReaders, setAvailableReaders] = useState<any[]>([]);
+  const [selectedReaderId, setSelectedReaderId] = useState<string | null>(null);
+
+  // Fetch available readers on component mount
+  useEffect(() => {
+    const fetchReaders = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('sumup-readers', {
+          body: { isTestMode, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        if (data.success && data.readers && data.readers.length > 0) {
+          setAvailableReaders(data.readers);
+          // Auto-select the first reader
+          setSelectedReaderId(data.readers[0].id);
+          console.log('Available readers:', data.readers);
+        } else {
+          setError('No SumUp readers found. Please pair a reader first.');
+        }
+      } catch (err) {
+        console.error('Failed to fetch readers:', err);
+        setError('Failed to fetch readers. Please check SumUp settings.');
+      }
+    };
+
+    fetchReaders();
+  }, [isTestMode]);
 
   useEffect(() => {
     if (paymentStatus === 'waiting' && countdown > 0) {
@@ -24,7 +52,6 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
     }
   }, [countdown, paymentStatus, onBack]);
 
-  // Poll payment status when processing
   useEffect(() => {
     let statusInterval: NodeJS.Timeout;
     
@@ -60,17 +87,23 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   }, [paymentStatus, checkoutId, isTestMode, onPaymentComplete]);
 
   const initiatePayment = async () => {
+    if (!selectedReaderId) {
+      setError('No SumUp reader selected. Please check SumUp settings.');
+      return;
+    }
+
     setPaymentStatus('processing');
     setError('');
     
     try {
-      console.log('Creating SumUp payment...');
+      console.log('Creating SumUp payment with reader ID:', selectedReaderId);
       
       const { data, error } = await supabase.functions.invoke('sumup-payment', {
         body: {
           amount: 1.00,
           currency: 'GBP',
-          isTestMode
+          isTestMode,
+          readerId: selectedReaderId
         }
       });
 
@@ -78,7 +111,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
 
       if (data.success) {
         setCheckoutId(data.checkoutId);
-        console.log('Payment initiated:', data.checkoutId);
+        console.log('Payment initiated and sent to reader:', data.checkoutId);
       } else {
         throw new Error(data.error || 'Payment creation failed');
       }
@@ -126,12 +159,21 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
                 <div className="bg-green-500/20 text-green-300 px-6 py-3 rounded-xl font-bold text-xl mb-4 border border-green-500/30">
                   {isTestMode ? '🧪 TEST MODE' : '🔴 LIVE MODE'}
                 </div>
-                <p className="text-2xl opacity-90 mb-4">
-                  Present your card to the SumUp reader
-                </p>
-                <div className="bg-gradient-to-r from-green-500 to-green-400 text-black px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
-                  🟢 SUMUP READER READY
-                </div>
+                
+                {selectedReaderId ? (
+                  <>
+                    <p className="text-2xl opacity-90 mb-4">
+                      Payment will be sent to your SumUp reader
+                    </p>
+                    <div className="bg-gradient-to-r from-green-500 to-green-400 text-black px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
+                      🟢 READER READY: {availableReaders.find(r => r.id === selectedReaderId)?.name || 'SumUp Reader'}
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-gradient-to-r from-red-500 to-red-400 text-white px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
+                    ❌ NO READER FOUND
+                  </div>
+                )}
               </div>
               
               <p className="text-lg opacity-70 bg-gray-800/50 rounded-lg p-3">
@@ -151,8 +193,9 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
               
               <Button 
                 onClick={initiatePayment}
+                disabled={!selectedReaderId}
                 size="lg"
-                className="text-2xl px-12 py-6 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="text-2xl px-12 py-6 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none"
               >
                 💳 Start Payment
               </Button>
@@ -177,9 +220,14 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
               Processing Payment...
             </h2>
             <div className="text-6xl mb-6 animate-spin">⏳</div>
-            <p className="text-2xl mb-4">Please complete payment on the card reader</p>
+            <p className="text-2xl mb-4">Complete payment on your SumUp reader</p>
             {checkoutId && (
               <p className="text-sm opacity-70">Payment ID: {checkoutId}</p>
+            )}
+            {selectedReaderId && (
+              <p className="text-lg opacity-90 mt-4 bg-blue-500/20 rounded-lg p-3">
+                Reader: {availableReaders.find(r => r.id === selectedReaderId)?.name || selectedReaderId}
+              </p>
             )}
           </div>
         )}
