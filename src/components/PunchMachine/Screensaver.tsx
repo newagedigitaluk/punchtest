@@ -27,7 +27,7 @@ const Screensaver = ({ onStart, onAdminAccess }: ScreensaverProps) => {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center text-white p-4 relative overflow-hidden">
+    <div className="h-screen w-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center text-white p-4 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-400/20 rounded-full blur-2xl animate-pulse"></div>
@@ -35,21 +35,21 @@ const Screensaver = ({ onStart, onAdminAccess }: ScreensaverProps) => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-400/10 rounded-full blur-2xl animate-pulse"></div>
       </div>
 
-      <div className="text-center animate-fade-in relative z-10">
+      <div className="text-center animate-fade-in relative z-10 max-w-4xl">
         <h1 
-          className="text-4xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 drop-shadow-2xl animate-pulse cursor-pointer select-none"
+          className="text-8xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 drop-shadow-2xl animate-pulse cursor-pointer select-none"
           onClick={handleLogoClick}
         >
           PUNCH POWER
         </h1>
-        <h2 className="text-xl font-bold mb-4 text-gray-100">
+        <h2 className="text-3xl font-bold mb-6 text-gray-100">
           Test Your Ultimate Strength!
         </h2>
         
-        <div className="mb-6 relative">
-          <div className="text-3xl mb-2 animate-bounce">🥊</div>
+        <div className="mb-8 relative">
+          <div className="text-6xl mb-4 animate-bounce">🥊</div>
           <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-yellow-500/20 rounded-full blur-xl"></div>
-          <p className="text-base font-semibold text-gray-200 relative z-10">
+          <p className="text-2xl font-semibold text-gray-200 relative z-10">
             Hit the bag and unleash your power
           </p>
         </div>
@@ -57,19 +57,19 @@ const Screensaver = ({ onStart, onAdminAccess }: ScreensaverProps) => {
         <Button 
           onClick={onStart}
           size="lg"
-          className="text-xl px-10 py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-2xl shadow-2xl transform hover:scale-110 transition-all duration-300 border-4 border-yellow-400 hover:border-yellow-300"
+          className="text-3xl px-16 py-8 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-2xl shadow-2xl transform hover:scale-110 transition-all duration-300 border-4 border-yellow-400 hover:border-yellow-300"
         >
-          <span className="flex items-center gap-3">
+          <span className="flex items-center gap-4">
             ⚡ PRESS START ⚡
           </span>
         </Button>
 
-        <div className="mt-4 text-lg font-bold text-yellow-400">
+        <div className="mt-6 text-2xl font-bold text-yellow-400">
           <p className="animate-pulse">Only £1 per punch</p>
         </div>
         
         {adminClickCount > 0 && (
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-4 text-sm text-gray-500">
             Admin access: {adminClickCount}/5 clicks
           </div>
         )}

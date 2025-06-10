@@ -47,6 +47,10 @@ const PunchMachine = () => {
     setGameState('results');
   };
 
+  const handleTimeout = () => {
+    setGameState('screensaver');
+  };
+
   const handlePlayAgain = () => {
     setGameState('payment');
   };
@@ -55,24 +59,31 @@ const PunchMachine = () => {
     setGameState('screensaver');
   };
 
-  switch (gameState) {
-    case 'screensaver':
-      return <Screensaver onStart={handleStart} onAdminAccess={handleAdminAccess} />;
-    case 'disclaimer':
-      return <Disclaimer onAccept={handleAcceptDisclaimer} onBack={handleBackToScreensaver} />;
-    case 'payment':
-      return <Payment onPaymentComplete={handlePaymentComplete} onBack={handleBackToScreensaver} />;
-    case 'awaiting-punch':
-      return <AwaitingPunch onPunchDetected={handlePunchDetected} />;
-    case 'results':
-      return <Results score={punchResult} onPlayAgain={handlePlayAgain} onFinish={handleFinish} />;
-    case 'admin-login':
-      return <AdminLogin onLogin={handleAdminLogin} onCancel={handleBackToScreensaver} />;
-    case 'admin-menu':
-      return <AdminMenu onExit={handleAdminExit} />;
-    default:
-      return <Screensaver onStart={handleStart} onAdminAccess={handleAdminAccess} />;
-  }
+  return (
+    <div className="w-screen h-screen overflow-hidden">
+      {gameState === 'screensaver' && (
+        <Screensaver onStart={handleStart} onAdminAccess={handleAdminAccess} />
+      )}
+      {gameState === 'disclaimer' && (
+        <Disclaimer onAccept={handleAcceptDisclaimer} onBack={handleBackToScreensaver} />
+      )}
+      {gameState === 'payment' && (
+        <Payment onPaymentComplete={handlePaymentComplete} onBack={handleBackToScreensaver} />
+      )}
+      {gameState === 'awaiting-punch' && (
+        <AwaitingPunch onPunchDetected={handlePunchDetected} onTimeout={handleTimeout} />
+      )}
+      {gameState === 'results' && (
+        <Results power={punchResult} onRestart={handlePlayAgain} onReset={handleFinish} />
+      )}
+      {gameState === 'admin-login' && (
+        <AdminLogin onLogin={handleAdminLogin} onCancel={handleBackToScreensaver} />
+      )}
+      {gameState === 'admin-menu' && (
+        <AdminMenu onExit={handleAdminExit} />
+      )}
+    </div>
+  );
 };
 
 export default PunchMachine;
