@@ -45,7 +45,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
                 Ready to Test Your Power?
               </h2>
               <div className="text-6xl mb-6">💳</div>
-              <p className="text-2xl mb-4">Cost: £2.00</p>
+              <p className="text-2xl mb-4">Cost: £1.00</p>
               <p className="text-lg opacity-75 mb-6">
                 Tap your card on the reader or insert/swipe when ready
               </p>
@@ -65,7 +65,7 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
                 onClick={onBack}
                 variant="outline"
                 size="lg"
-                className="text-xl px-8 py-4"
+                className="text-xl px-8 py-4 text-white border-white hover:bg-white hover:text-black"
               >
                 Cancel
               </Button>

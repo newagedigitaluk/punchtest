@@ -32,7 +32,7 @@ const Screensaver = ({ onStart }: ScreensaverProps) => {
         </Button>
 
         <div className="mt-12 text-lg opacity-75">
-          <p>Only £2 per punch</p>
+          <p>Only £1 per punch</p>
         </div>
       </div>
     </div>

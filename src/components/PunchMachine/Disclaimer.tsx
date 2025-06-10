@@ -53,7 +53,7 @@ const Disclaimer = ({ onAccept, onBack }: DisclaimerProps) => {
               type="checkbox" 
               checked={accepted}
               onChange={(e) => setAccepted(e.target.checked)}
-              className="w-6 h-6 mr-4 accent-red-500"
+              className="w-12 h-12 mr-6 accent-red-500 cursor-pointer"
             />
             I have read and accept the terms above
           </label>
@@ -64,7 +64,7 @@ const Disclaimer = ({ onAccept, onBack }: DisclaimerProps) => {
             onClick={onBack}
             variant="outline"
             size="lg"
-            className="text-xl px-8 py-4"
+            className="text-xl px-8 py-4 text-white border-white hover:bg-white hover:text-black"
           >
             Back
           </Button>
