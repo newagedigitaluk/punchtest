@@ -37,6 +37,35 @@ serve(async (req) => {
     console.log(`Creating SumUp checkout for ${amount} ${currency} in ${isTestMode ? 'test' : 'live'} mode`)
     console.log(`Using merchant code: ${merchantCode}`)
 
+    // Verify reader exists and is paired if readerId is provided
+    if (readerId) {
+      console.log(`Verifying reader ${readerId} exists and is paired`)
+      
+      const readersResponse = await fetch(`https://api.sumup.com/v0.1/merchants/${merchantCode}/readers`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!readersResponse.ok) {
+        throw new Error(`Failed to fetch readers: ${readersResponse.status}`)
+      }
+
+      const readersData = await readersResponse.json()
+      const reader = readersData.items?.find((r: any) => r.id === readerId)
+      
+      if (!reader) {
+        throw new Error(`Reader ${readerId} not found or not paired`)
+      }
+      
+      if (reader.status !== 'paired') {
+        throw new Error(`Reader ${readerId} is not paired (status: ${reader.status})`)
+      }
+      
+      console.log(`Reader verified: ${reader.name || 'Unnamed'} (${reader.device?.model || 'Unknown model'})`)
+    }
+
     // Create checkout using the correct API structure from documentation
     const checkoutReference = `punch-${Date.now()}`
     const checkoutPayload = {
@@ -85,39 +114,45 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Checkout created successfully:', JSON.stringify(checkoutData))
 
-    // Now we need to process the checkout to send it to the reader
+    // For physical readers, we need to use a different approach
+    // Instead of trying to "process" the checkout, we need to send it to the reader for customer interaction
     if (readerId && checkoutData.id) {
-      console.log(`Attempting to process checkout ${checkoutData.id} on reader ${readerId}`)
+      console.log(`Attempting to send checkout ${checkoutData.id} to reader ${readerId}`)
       
       try {
-        // According to SumUp documentation, we need to process the checkout
-        // This typically involves sending a request to process the payment
-        const processUrl = `https://api.sumup.com/v0.1/checkouts/${checkoutData.id}`
+        // Use the reader-specific endpoint to send the checkout
+        const readerCheckoutUrl = `https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}/checkout`
         
-        const processResponse = await fetch(processUrl, {
-          method: 'PUT',
+        const readerPayload = {
+          checkout_id: checkoutData.id
+        }
+        
+        console.log('Sending checkout to reader with payload:', JSON.stringify(readerPayload))
+        
+        const readerResponse = await fetch(readerCheckoutUrl, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            payment_type: 'card',
-            installments: 1
-          })
+          body: JSON.stringify(readerPayload)
         })
 
-        console.log('Process response status:', processResponse.status)
+        console.log('Reader response status:', readerResponse.status)
         
-        if (processResponse.ok) {
-          const processData = await processResponse.json()
-          console.log('Checkout processing initiated:', JSON.stringify(processData))
+        if (readerResponse.ok) {
+          const readerData = await readerResponse.json()
+          console.log('Checkout sent to reader successfully:', JSON.stringify(readerData))
         } else {
-          const processError = await processResponse.text()
-          console.warn('Failed to process checkout on reader:', processError)
-          // Don't fail the whole request if processing fails
+          const readerError = await readerResponse.text()
+          console.warn('Failed to send checkout to reader:', readerError)
+          
+          // If the reader endpoint doesn't work, the checkout is still created
+          // The customer might need to manually select the payment on the reader
+          console.log('Checkout created but not automatically sent to reader. Customer may need to manually start payment on reader.')
         }
-      } catch (processError) {
-        console.warn('Reader processing failed but checkout was created:', processError)
+      } catch (readerError) {
+        console.warn('Reader communication failed but checkout was created:', readerError)
       }
     }
 
