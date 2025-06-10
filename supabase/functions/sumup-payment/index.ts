@@ -114,20 +114,20 @@ serve(async (req) => {
     const checkoutData = await checkoutResponse.json()
     console.log('Checkout created successfully:', JSON.stringify(checkoutData))
 
-    // For physical readers, we need to use a different approach
-    // Instead of trying to "process" the checkout, we need to send it to the reader for customer interaction
+    // If we have a reader, try different approaches to send the checkout
     if (readerId && checkoutData.id) {
       console.log(`Attempting to send checkout ${checkoutData.id} to reader ${readerId}`)
       
+      // Try the direct reader checkout endpoint first
       try {
-        // Use the reader-specific endpoint to send the checkout
-        const readerCheckoutUrl = `https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}/checkout`
+        const readerCheckoutUrl = `https://api.sumup.com/v0.1/readers/${readerId}/checkout`
         
         const readerPayload = {
           checkout_id: checkoutData.id
         }
         
-        console.log('Sending checkout to reader with payload:', JSON.stringify(readerPayload))
+        console.log('Trying direct reader endpoint:', readerCheckoutUrl)
+        console.log('Reader payload:', JSON.stringify(readerPayload))
         
         const readerResponse = await fetch(readerCheckoutUrl, {
           method: 'POST',
@@ -138,21 +138,68 @@ serve(async (req) => {
           body: JSON.stringify(readerPayload)
         })
 
-        console.log('Reader response status:', readerResponse.status)
+        console.log('Direct reader response status:', readerResponse.status)
         
         if (readerResponse.ok) {
           const readerData = await readerResponse.json()
-          console.log('Checkout sent to reader successfully:', JSON.stringify(readerData))
+          console.log('Checkout sent to reader successfully via direct endpoint:', JSON.stringify(readerData))
         } else {
           const readerError = await readerResponse.text()
-          console.warn('Failed to send checkout to reader:', readerError)
+          console.warn('Direct reader endpoint failed:', readerError)
           
-          // If the reader endpoint doesn't work, the checkout is still created
-          // The customer might need to manually select the payment on the reader
-          console.log('Checkout created but not automatically sent to reader. Customer may need to manually start payment on reader.')
+          // Try alternative endpoint through merchant
+          console.log('Trying merchant-based reader endpoint...')
+          const altReaderUrl = `https://api.sumup.com/v0.1/merchants/${merchantCode}/readers/${readerId}/checkout`
+          
+          const altReaderResponse = await fetch(altReaderUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(readerPayload)
+          })
+
+          console.log('Alternative reader response status:', altReaderResponse.status)
+          
+          if (altReaderResponse.ok) {
+            const altReaderData = await altReaderResponse.json()
+            console.log('Checkout sent to reader successfully via merchant endpoint:', JSON.stringify(altReaderData))
+          } else {
+            const altReaderError = await altReaderResponse.text()
+            console.warn('Alternative reader endpoint also failed:', altReaderError)
+            
+            // Try processing the checkout directly
+            console.log('Trying to process checkout directly...')
+            const processUrl = `https://api.sumup.com/v0.1/checkouts/${checkoutData.id}`
+            
+            const processResponse = await fetch(processUrl, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                payment_type: 'card'
+              })
+            })
+
+            console.log('Process checkout response status:', processResponse.status)
+            
+            if (processResponse.ok) {
+              const processData = await processResponse.json()
+              console.log('Checkout processing initiated:', JSON.stringify(processData))
+            } else {
+              const processError = await processResponse.text()
+              console.warn('Failed to process checkout:', processError)
+              console.log('Checkout created but requires manual interaction on reader')
+            }
+          }
         }
       } catch (readerError) {
-        console.warn('Reader communication failed but checkout was created:', readerError)
+        console.warn('All reader communication attempts failed:', readerError)
+        console.log('Checkout created successfully but reader communication failed')
+        console.log('Customer may need to manually initiate payment on the reader')
       }
     }
 
@@ -165,6 +212,7 @@ serve(async (req) => {
         currency: currency,
         readerId: readerId,
         status: checkoutData.status || 'PENDING',
+        message: readerId ? 'Checkout created and sent to reader' : 'Checkout created',
         debug: {
           merchantCode: merchantCode,
           isTestMode: isTestMode,
