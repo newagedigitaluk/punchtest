@@ -5,6 +5,7 @@ import PaymentStatusDisplay from './PaymentStatusDisplay';
 import PaymentControls from './PaymentControls';
 import { useWebhookPaymentStatus } from '@/hooks/useWebhookPaymentStatus';
 import { usePaymentActions } from '@/hooks/usePaymentActions';
+import { useReaderManagement } from '@/hooks/useReaderManagement';
 
 interface PaymentProps {
   onPaymentComplete: () => void;
@@ -13,6 +14,9 @@ interface PaymentProps {
 
 const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  const isTestMode = true; // You can make this configurable later
+
+  const { availableReaders, selectedReaderId, error: readerError } = useReaderManagement(isTestMode);
 
   const { paymentStatus, setPaymentStatus, countdown, error, setError, resetPayment } = useWebhookPaymentStatus({
     checkoutId,
@@ -36,11 +40,18 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
     onError: (errorMessage: string) => {
       setError(errorMessage);
       setPaymentStatus('failed');
-    }
+    },
+    readerId: selectedReaderId || undefined
   });
 
   const handleInitiatePayment = () => {
-    console.log('Initiating payment process...');
+    if (!selectedReaderId) {
+      setError('No SumUp reader selected. Please ensure a reader is paired.');
+      setPaymentStatus('failed');
+      return;
+    }
+
+    console.log('Initiating payment process with reader:', selectedReaderId);
     resetPayment();
     initiatePayment();
   };
@@ -59,8 +70,12 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
         <PaymentStatusDisplay 
           paymentStatus={paymentStatus}
           countdown={countdown}
-          error={error}
+          error={error || readerError}
           checkoutId={checkoutId}
+          selectedReaderId={selectedReaderId}
+          availableReaders={availableReaders}
+          isTestMode={isTestMode}
+          onRetry={resetPayment}
         />
         
         <PaymentControls
