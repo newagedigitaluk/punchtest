@@ -46,15 +46,15 @@ serve(async (req) => {
       console.error(`Pi webhook failed: ${piResponse.status} ${piResponse.statusText}`)
       console.error(`Pi response body: ${piResponseText}`)
       
-      // Return success anyway - the payment was successful, punch machine issue is separate
+      // Return error - payment processing should fail if Pi is not reachable
       return new Response(
         JSON.stringify({
-          success: true,
-          message: 'Payment processed successfully, punch machine activation attempted',
-          piError: `Pi communication failed: ${piResponse.status}`,
+          success: false,
+          error: `Punch machine communication failed: ${piResponse.status}`,
           clientTransactionId
         }),
         {
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -77,14 +77,15 @@ serve(async (req) => {
   } catch (error) {
     console.error('Punch trigger error:', error)
     
-    // Even if punch machine communication fails, the payment was successful
+    // Return error - do not allow payment to succeed if there are communication issues
     return new Response(
       JSON.stringify({
-        success: true,
-        message: 'Payment processed, punch machine communication issue',
-        error: error.message
+        success: false,
+        error: `Punch machine activation failed: ${error.message}`,
+        clientTransactionId: null
       }),
       {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
