@@ -3,40 +3,28 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UsePaymentActionsProps {
-  selectedReaderId: string | null;
-  isTestMode: boolean;
-  setPaymentStatus: (status: 'waiting' | 'processing' | 'success' | 'failed') => void;
-  setCheckoutId: (id: string | null) => void;
-  setError: (error: string) => void;
-  onPaymentComplete: () => void;
+  onPaymentInitiated: (id: string) => void;
+  onError: (errorMessage: string) => void;
 }
 
 export const usePaymentActions = ({
-  selectedReaderId,
-  isTestMode,
-  setPaymentStatus,
-  setCheckoutId,
-  setError,
-  onPaymentComplete
+  onPaymentInitiated,
+  onError
 }: UsePaymentActionsProps) => {
-  const initiatePayment = async () => {
-    if (!selectedReaderId) {
-      setError('No SumUp reader selected. Please check SumUp settings.');
-      return;
-    }
+  const [isLoading, setIsLoading] = useState(false);
 
-    setPaymentStatus('processing');
-    setError('');
+  const initiatePayment = async () => {
+    setIsLoading(true);
     
     try {
-      console.log('Creating SumUp payment with webhook support, reader ID:', selectedReaderId);
+      console.log('Creating SumUp payment with webhook support');
       
       const { data, error } = await supabase.functions.invoke('sumup-payment', {
         body: {
           amount: 1.00,
           currency: 'GBP',
-          isTestMode,
-          readerId: selectedReaderId
+          isTestMode: true, // You can make this configurable later
+          readerId: 'test-reader' // You can make this configurable later
         }
       });
 
@@ -44,23 +32,22 @@ export const usePaymentActions = ({
 
       if (data.success) {
         const clientTransactionId = data.clientTransactionId;
-        setCheckoutId(clientTransactionId);
         console.log('Payment initiated with webhook support:', clientTransactionId);
         console.log('Webhook URL configured:', data.webhookUrl);
-        
-        // The payment status will now be updated via real-time webhook
-        // No need for polling - the webhook will notify us instantly
+        onPaymentInitiated(clientTransactionId);
       } else {
         throw new Error(data.error || 'Payment creation failed');
       }
     } catch (err) {
       console.error('Payment initiation failed:', err);
-      setPaymentStatus('failed');
-      setError('Failed to create payment. Please try again.');
+      onError('Failed to create payment. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return {
-    initiatePayment
+    initiatePayment,
+    isLoading
   };
 };

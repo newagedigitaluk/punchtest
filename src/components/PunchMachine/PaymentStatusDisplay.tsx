@@ -4,23 +4,15 @@ import { Button } from "@/components/ui/button";
 interface PaymentStatusDisplayProps {
   paymentStatus: 'waiting' | 'processing' | 'success' | 'failed';
   countdown: number;
-  selectedReaderId: string | null;
-  availableReaders: any[];
-  checkoutId: string | null;
-  isTestMode: boolean;
   error: string;
-  onRetry: () => void;
+  checkoutId: string | null;
 }
 
 const PaymentStatusDisplay = ({
   paymentStatus,
   countdown,
-  selectedReaderId,
-  availableReaders,
-  checkoutId,
-  isTestMode,
   error,
-  onRetry
+  checkoutId
 }: PaymentStatusDisplayProps) => {
   if (paymentStatus === 'waiting') {
     return (
@@ -33,23 +25,12 @@ const PaymentStatusDisplay = ({
         
         <div className="mb-6">
           <div className="bg-green-500/20 text-green-300 px-6 py-3 rounded-xl font-bold text-xl mb-4 border border-green-500/30">
-            {isTestMode ? '🧪 TEST MODE' : '🔴 LIVE MODE'}
+            🧪 TEST MODE
           </div>
           
-          {selectedReaderId ? (
-            <>
-              <p className="text-2xl opacity-90 mb-4">
-                Payment will be sent to your SumUp reader
-              </p>
-              <div className="bg-gradient-to-r from-green-500 to-green-400 text-black px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
-                🟢 READER READY: {availableReaders.find(r => r.id === selectedReaderId)?.name || 'SumUp Reader'}
-              </div>
-            </>
-          ) : (
-            <div className="bg-gradient-to-r from-red-500 to-red-400 text-white px-8 py-4 rounded-xl font-bold text-2xl mb-4 shadow-lg">
-              ❌ NO READER FOUND
-            </div>
-          )}
+          <p className="text-2xl opacity-90 mb-4">
+            Payment will be processed via SumUp
+          </p>
         </div>
         
         <p className="text-lg opacity-70 bg-gray-800/50 rounded-lg p-3">
@@ -69,11 +50,6 @@ const PaymentStatusDisplay = ({
         <p className="text-2xl mb-4">Complete payment on your SumUp reader</p>
         {checkoutId && (
           <p className="text-sm opacity-70">Payment ID: {checkoutId}</p>
-        )}
-        {selectedReaderId && (
-          <p className="text-lg opacity-90 mt-4 bg-blue-500/20 rounded-lg p-3">
-            Reader: {availableReaders.find(r => r.id === selectedReaderId)?.name || selectedReaderId}
-          </p>
         )}
       </div>
     );
@@ -99,13 +75,6 @@ const PaymentStatusDisplay = ({
         </h2>
         <div className="text-6xl mb-6 animate-pulse">❌</div>
         <p className="text-2xl mb-4">{error || 'Please try again'}</p>
-        <Button 
-          onClick={onRetry}
-          size="lg"
-          className="text-2xl px-12 py-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl"
-        >
-          🔄 Try Again
-        </Button>
       </div>
     );
   }
