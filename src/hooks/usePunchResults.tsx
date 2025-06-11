@@ -27,43 +27,55 @@ export const usePunchResults = ({
 
     channel
       .on('broadcast', { event: 'punch_completed' }, (payload) => {
-        console.log('Received punch results:', payload);
+        console.log('Received punch results broadcast:', payload);
         
         const { punchForce, clientTransactionId, status } = payload.payload;
         
-        console.log(`Punch completed: ${punchForce}kg for transaction ${clientTransactionId}`);
+        console.log(`Punch completed: ${punchForce}kg for transaction ${clientTransactionId}, status: ${status}`);
 
-        if (status === 'completed') {
+        if (status === 'completed' && punchForce !== undefined) {
+          console.log('Processing punch completion...');
           setPunchStatus('completed');
-          onPunchComplete(punchForce);
+          setIsWaitingForPunch(false);
+          
+          // Ensure we call the callback with the force value
+          setTimeout(() => {
+            console.log(`Calling onPunchComplete with force: ${punchForce}`);
+            onPunchComplete(punchForce);
+          }, 100);
         }
       })
       .subscribe((status) => {
         console.log(`Punch results subscription status: ${status}`);
         if (status === 'SUBSCRIBED') {
           console.log(`Successfully subscribed to ${channelName}`);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`Failed to subscribe to ${channelName}`);
         }
       });
 
-    // Set a timeout for punch completion (30 seconds)
+    // Set a timeout for punch completion (45 seconds - longer than the 30s Pi timeout)
     const punchTimeout = setTimeout(() => {
-      console.log('Punch timeout reached - no punch detected');
+      console.log('Punch timeout reached - no punch detected within 45 seconds');
       setPunchStatus('timeout');
-    }, 30000);
+      setIsWaitingForPunch(false);
+    }, 45000);
 
     return () => {
-      console.log(`Unsubscribing from ${channelName}`);
+      console.log(`Cleaning up: Unsubscribing from ${channelName}`);
       channel.unsubscribe();
       clearTimeout(punchTimeout);
     };
   }, [checkoutId, punchStatus, onPunchComplete]);
 
   const startWaitingForPunch = () => {
+    console.log('Starting to wait for punch results...');
     setIsWaitingForPunch(true);
     setPunchStatus('waiting');
   };
 
   const resetPunchState = () => {
+    console.log('Resetting punch state');
     setIsWaitingForPunch(false);
     setPunchStatus('idle');
   };

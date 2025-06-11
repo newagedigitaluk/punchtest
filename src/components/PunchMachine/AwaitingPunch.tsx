@@ -28,6 +28,7 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
     checkoutId,
     onPunchComplete: (force: number) => {
       console.log('Real punch detected with force:', force);
+      console.log('Calling onPunchDetected callback...');
       onPunchDetected(force);
     }
   });
@@ -35,6 +36,7 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
   useEffect(() => {
     // Initial 3-second countdown before machine is ready
     const readyTimer = setTimeout(() => {
+      console.log('Machine is now ready - starting punch listener');
       setIsReady(true);
       // Start listening for punch results when ready
       if (checkoutId) {
@@ -113,16 +115,22 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
                 ⏰ Time left: {countdown}s
               </div>
 
-              {/* Only show debug info in test mode */}
-              {isTestMode && checkoutId && (
+              {/* Show status indicators */}
+              {checkoutId && (
                 <div className="mt-4 text-lg text-green-300 bg-gray-900/30 rounded-lg p-3">
-                  🔗 Listening for punch from machine (ID: {checkoutId.slice(0, 8)}...)
+                  🔗 Machine Ready - Waiting for punch (ID: {checkoutId.slice(0, 8)}...)
                 </div>
               )}
 
-              {isTestMode && punchStatus === 'waiting' && (
+              {punchStatus === 'waiting' && (
                 <div className="mt-4 text-lg text-blue-300 bg-gray-900/30 rounded-lg p-3">
-                  ⏳ Waiting for punch results...
+                  ⏳ Listening for punch results...
+                </div>
+              )}
+
+              {punchStatus === 'completed' && (
+                <div className="mt-4 text-lg text-green-400 bg-gray-900/30 rounded-lg p-3">
+                  ✅ Punch detected! Loading results...
                 </div>
               )}
             </div>
