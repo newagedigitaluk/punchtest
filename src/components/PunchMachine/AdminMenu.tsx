@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings, BarChart3, Wrench, Users, CreditCard, Monitor } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import SumUpSettings from "./SumUpSettings";
 import SystemMonitor from "./SystemMonitor";
 import TransactionManagement from "./TransactionManagement";
@@ -14,8 +15,44 @@ interface AdminMenuProps {
   onExit: () => void;
 }
 
+interface QuickStats {
+  todayPunches: number;
+  todayRevenue: number;
+  highScore: number;
+  totalTransactions: number;
+}
+
+interface DetailedStats {
+  totalPunches: number;
+  averageForce: number;
+  successRate: number;
+  totalRevenue: number;
+  weekRevenue: number;
+  todayRevenue: number;
+  highScores: Array<{
+    rank: number;
+    score: number;
+    time: string;
+  }>;
+}
+
 const AdminMenu = ({ onExit }: AdminMenuProps) => {
   const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'maintenance' | 'sumup' | 'monitor' | 'transactions'>('main');
+  const [quickStats, setQuickStats] = useState<QuickStats>({
+    todayPunches: 0,
+    todayRevenue: 0,
+    highScore: 0,
+    totalTransactions: 0
+  });
+  const [detailedStats, setDetailedStats] = useState<DetailedStats>({
+    totalPunches: 0,
+    averageForce: 0,
+    successRate: 0,
+    totalRevenue: 0,
+    weekRevenue: 0,
+    todayRevenue: 0,
+    highScores: []
+  });
   const [settings, setSettings] = useState({
     pricePerPunch: 1.00,
     difficulty: 'normal',
@@ -25,6 +62,119 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
     autoRestart: true,
     sessionTimeout: 60
   });
+
+  const fetchQuickStats = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get today's transactions
+    const { data: todayTransactions } = await supabase
+      .from('transactions')
+      .select('*')
+      .gte('created_at', `${today}T00:00:00Z`)
+      .lt('created_at', `${today}T23:59:59Z`);
+
+    // Get all transactions for totals
+    const { data: allTransactions } = await supabase
+      .from('transactions')
+      .select('*');
+
+    const todaySuccessful = todayTransactions?.filter(t => t.status === 'successful') || [];
+    const todayPunches = todayTransactions?.filter(t => t.punch_force && t.punch_force > 0) || [];
+    const todayRevenue = todaySuccessful.reduce((sum, t) => sum + (t.amount - (t.refund_amount || 0)), 0);
+    
+    const allPunches = allTransactions?.filter(t => t.punch_force && t.punch_force > 0) || [];
+    const highScore = allPunches.length > 0 ? Math.max(...allPunches.map(t => t.punch_force || 0)) : 0;
+
+    setQuickStats({
+      todayPunches: todayPunches.length,
+      todayRevenue: todayRevenue,
+      highScore: highScore,
+      totalTransactions: allTransactions?.length || 0
+    });
+  };
+
+  const fetchDetailedStats = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    // Get all transactions
+    const { data: allTransactions } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // Get this week's transactions
+    const { data: weekTransactions } = await supabase
+      .from('transactions')
+      .select('*')
+      .gte('created_at', weekAgo.toISOString())
+      .eq('status', 'successful');
+
+    // Get today's transactions
+    const { data: todayTransactions } = await supabase
+      .from('transactions')
+      .select('*')
+      .gte('created_at', `${today}T00:00:00Z`)
+      .lt('created_at', `${today}T23:59:59Z`)
+      .eq('status', 'successful');
+
+    const allPunches = allTransactions?.filter(t => t.punch_force && t.punch_force > 0) || [];
+    const successfulTransactions = allTransactions?.filter(t => t.status === 'successful') || [];
+    
+    const totalRevenue = successfulTransactions.reduce((sum, t) => sum + (t.amount - (t.refund_amount || 0)), 0);
+    const weekRevenue = weekTransactions?.reduce((sum, t) => sum + (t.amount - (t.refund_amount || 0)), 0) || 0;
+    const todayRevenue = todayTransactions?.reduce((sum, t) => sum + (t.amount - (t.refund_amount || 0)), 0) || 0;
+    
+    const averageForce = allPunches.length > 0 
+      ? Math.round(allPunches.reduce((sum, t) => sum + (t.punch_force || 0), 0) / allPunches.length)
+      : 0;
+    
+    const successRate = allTransactions && allTransactions.length > 0
+      ? Math.round((allPunches.length / allTransactions.length) * 100 * 10) / 10
+      : 0;
+
+    // Get top 5 punch scores with timestamps
+    const topPunches = allPunches
+      .sort((a, b) => (b.punch_force || 0) - (a.punch_force || 0))
+      .slice(0, 5)
+      .map((t, index) => ({
+        rank: index + 1,
+        score: t.punch_force || 0,
+        time: getTimeAgo(t.created_at)
+      }));
+
+    setDetailedStats({
+      totalPunches: allPunches.length,
+      averageForce: averageForce,
+      successRate: successRate,
+      totalRevenue: totalRevenue,
+      weekRevenue: weekRevenue,
+      todayRevenue: todayRevenue,
+      highScores: topPunches
+    });
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffHours < 1) return 'Less than 1 hour ago';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+  };
+
+  useEffect(() => {
+    if (currentView === 'main') {
+      fetchQuickStats();
+    } else if (currentView === 'stats') {
+      fetchDetailedStats();
+    }
+  }, [currentView]);
 
   const menuItems = [
     { id: 'monitor', title: 'System Monitor', icon: Monitor, description: 'Check system health and connectivity status' },
@@ -90,20 +240,20 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-green-600">127</div>
+                  <div className="text-2xl font-bold text-green-600">{quickStats.todayPunches}</div>
                   <div className="text-sm text-slate-600">Today's Punches</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-yellow-600">£127</div>
+                  <div className="text-2xl font-bold text-yellow-600">£{quickStats.todayRevenue.toFixed(2)}</div>
                   <div className="text-sm text-slate-600">Today's Revenue</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-blue-600">892</div>
-                  <div className="text-sm text-slate-600">High Score</div>
+                  <div className="text-2xl font-bold text-blue-600">{quickStats.highScore}</div>
+                  <div className="text-sm text-slate-600">High Score (kg)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-purple-600">98.5%</div>
-                  <div className="text-sm text-slate-600">Uptime</div>
+                  <div className="text-2xl font-bold text-purple-600">{quickStats.totalTransactions}</div>
+                  <div className="text-sm text-slate-600">Total Transactions</div>
                 </div>
               </div>
             </CardContent>
@@ -218,15 +368,15 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Total Punches:</span>
-                  <span className="text-slate-900 font-semibold">2,847</span>
+                  <span className="text-slate-900 font-semibold">{detailedStats.totalPunches.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Average Force:</span>
-                  <span className="text-slate-900 font-semibold">654 PSI</span>
+                  <span className="text-slate-900 font-semibold">{detailedStats.averageForce} kg</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Success Rate:</span>
-                  <span className="text-green-600 font-semibold">94.2%</span>
+                  <span className="text-green-600 font-semibold">{detailedStats.successRate}%</span>
                 </div>
               </CardContent>
             </Card>
@@ -238,15 +388,15 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Total Revenue:</span>
-                  <span className="text-green-600 font-semibold">£2,847</span>
+                  <span className="text-green-600 font-semibold">£{detailedStats.totalRevenue.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">This Week:</span>
-                  <span className="text-slate-900 font-semibold">£387</span>
+                  <span className="text-slate-900 font-semibold">£{detailedStats.weekRevenue.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-600">Today:</span>
-                  <span className="text-slate-900 font-semibold">£127</span>
+                  <span className="text-slate-900 font-semibold">£{detailedStats.todayRevenue.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -257,21 +407,19 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
               <CardTitle className="text-slate-900">Recent High Scores</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {[
-                  { rank: 1, score: 892, time: '2 hours ago' },
-                  { rank: 2, score: 876, time: '1 day ago' },
-                  { rank: 3, score: 854, time: '3 days ago' },
-                  { rank: 4, score: 831, time: '1 week ago' },
-                  { rank: 5, score: 824, time: '1 week ago' }
-                ].map((entry) => (
-                  <div key={entry.rank} className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-200">
-                    <span className="text-red-600 font-semibold">#{entry.rank}</span>
-                    <span className="text-slate-900 font-bold">{entry.score} PSI</span>
-                    <span className="text-slate-600 text-sm">{entry.time}</span>
-                  </div>
-                ))}
-              </div>
+              {detailedStats.highScores.length > 0 ? (
+                <div className="space-y-2">
+                  {detailedStats.highScores.map((entry) => (
+                    <div key={entry.rank} className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-200">
+                      <span className="text-red-600 font-semibold">#{entry.rank}</span>
+                      <span className="text-slate-900 font-bold">{entry.score} kg</span>
+                      <span className="text-slate-600 text-sm">{entry.time}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-slate-600 py-4">No punch data available yet</div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -292,3 +440,5 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 };
 
 export default AdminMenu;
+
+</edits_to_apply>
