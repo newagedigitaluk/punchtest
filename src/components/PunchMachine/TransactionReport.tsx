@@ -38,6 +38,7 @@ interface ReportStats {
 const TransactionReport = ({ onBack }: TransactionReportProps) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const [stats, setStats] = useState<ReportStats>({
     totalTransactions: 0,
     paidWithPunch: 0,
@@ -49,6 +50,8 @@ const TransactionReport = ({ onBack }: TransactionReportProps) => {
 
   const fetchTransactions = async () => {
     setLoading(true);
+    console.log('Fetching transactions from database...');
+    
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
@@ -56,7 +59,23 @@ const TransactionReport = ({ onBack }: TransactionReportProps) => {
 
     if (error) {
       console.error('Error fetching transactions:', error);
+      setDebugInfo(`Error: ${error.message}`);
     } else {
+      console.log('Raw transaction data:', data);
+      
+      // Debug info about punch_force values
+      const punchForceValues = data?.map(t => ({
+        id: t.client_transaction_id.slice(0, 8),
+        punch_force: t.punch_force,
+        status: t.status,
+        created_at: t.created_at
+      })) || [];
+      
+      console.log('Punch force values:', punchForceValues);
+      
+      const debugText = `Found ${data?.length || 0} transactions. Punch force values: ${JSON.stringify(punchForceValues, null, 2)}`;
+      setDebugInfo(debugText);
+      
       setTransactions(data || []);
       calculateStats(data || []);
     }
@@ -151,6 +170,17 @@ const TransactionReport = ({ onBack }: TransactionReportProps) => {
             </Button>
           </div>
         </div>
+
+        {/* Debug Information */}
+        {debugInfo && (
+          <Alert className="mb-6 border-blue-300 bg-blue-50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>🔍 Debug Info:</strong>
+              <pre className="mt-2 text-xs overflow-auto max-h-32">{debugInfo}</pre>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Summary Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
@@ -255,7 +285,9 @@ const TransactionReport = ({ onBack }: TransactionReportProps) => {
                         {transaction.punch_force ? (
                           <span className="text-green-600 font-semibold">{transaction.punch_force} kg</span>
                         ) : (
-                          <span className="text-gray-400">No punch</span>
+                          <span className="text-gray-400">
+                            No punch (raw: {JSON.stringify(transaction.punch_force)})
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>{getStatusIndicator(transaction)}</TableCell>
