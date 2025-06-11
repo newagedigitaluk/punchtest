@@ -32,8 +32,8 @@ serve(async (req) => {
         'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify({
-        clientTransactionId: clientTransactionId,
-        action: 'activate_punch_machine',
+        session_id: clientTransactionId,
+        type: 'activate',
         timestamp: new Date().toISOString()
       })
     })
