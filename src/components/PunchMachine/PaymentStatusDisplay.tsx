@@ -41,17 +41,11 @@ const PaymentStatusDisplay = ({
             </div>
           )}
           
-          {!isTestMode && (
-            <div className="bg-green-500/20 text-green-300 px-6 py-4 rounded-xl font-bold text-xl text-center border border-green-500/30">
-              💰 LIVE MODE - Real payment required
-            </div>
-          )}
-          
           <p className="text-2xl text-center text-blue-300">
             Payment will be processed via SumUp
           </p>
           
-          {selectedReaderId && (
+          {isTestMode && selectedReaderId && (
             <div className="bg-blue-500/20 text-blue-300 px-6 py-3 rounded-lg text-lg text-center border border-blue-500/30">
               Reader: {selectedReaderId}
             </div>
@@ -76,10 +70,10 @@ const PaymentStatusDisplay = ({
         <div className="text-center">
           <div className="text-8xl mb-8 animate-spin">⏳</div>
           <p className="text-2xl mb-6 text-yellow-300">Complete payment on your SumUp reader</p>
-          {checkoutId && (
+          {isTestMode && checkoutId && (
             <p className="text-lg opacity-70 mb-2">Payment ID: {checkoutId}</p>
           )}
-          {selectedReaderId && (
+          {isTestMode && selectedReaderId && (
             <p className="text-lg opacity-70">Reader: {selectedReaderId}</p>
           )}
         </div>

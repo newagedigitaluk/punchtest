@@ -12,6 +12,9 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
   const [countdown, setCountdown] = useState(30);
   const [isReady, setIsReady] = useState(false);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  
+  // Get test mode from localStorage
+  const isTestMode = localStorage.getItem('sumupTestMode') === 'true';
 
   // Get the checkout ID from sessionStorage (set during payment)
   useEffect(() => {
@@ -44,21 +47,22 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
   }, [checkoutId, startWaitingForPunch]);
 
   useEffect(() => {
-    if (isReady && countdown > 0) {
+    // Only use countdown timer in test mode
+    if (isTestMode && isReady && countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0) {
+    } else if (isTestMode && countdown === 0) {
       onTimeout();
     }
-  }, [countdown, isReady, onTimeout]);
+  }, [countdown, isReady, onTimeout, isTestMode]);
 
-  // Handle timeout from punch results hook
+  // Handle timeout from punch results hook (only in test mode)
   useEffect(() => {
-    if (punchStatus === 'timeout') {
+    if (isTestMode && punchStatus === 'timeout') {
       console.log('Punch timeout detected');
       onTimeout();
     }
-  }, [punchStatus, onTimeout]);
+  }, [punchStatus, onTimeout, isTestMode]);
 
   const simulatePunch = () => {
     // Simulate punch detection with random power between 50-999 kg
@@ -103,31 +107,35 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
                 You have one credit - make it count!
               </p>
               
-              <div className="text-4xl font-bold text-red-400 bg-gray-900/50 rounded-xl p-4">
-                ⏰ Time left: {countdown}s
-              </div>
+              {isTestMode && (
+                <div className="text-4xl font-bold text-red-400 bg-gray-900/50 rounded-xl p-4">
+                  ⏰ Time left: {countdown}s
+                </div>
+              )}
 
-              {checkoutId && (
+              {isTestMode && checkoutId && (
                 <div className="mt-4 text-lg text-green-300 bg-gray-900/30 rounded-lg p-3">
                   🔗 Listening for punch from machine (ID: {checkoutId.slice(0, 8)}...)
                 </div>
               )}
 
-              {punchStatus === 'waiting' && (
+              {isTestMode && punchStatus === 'waiting' && (
                 <div className="mt-4 text-lg text-blue-300 bg-gray-900/30 rounded-lg p-3">
                   ⏳ Waiting for punch results...
                 </div>
               )}
             </div>
 
-            {/* Mock punch button for testing */}
-            <Button 
-              onClick={simulatePunch}
-              size="lg"
-              className="text-2xl px-16 py-6 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-2xl shadow-2xl transform hover:scale-110 transition-all duration-200 border-4 border-yellow-400"
-            >
-              🥊 Simulate Punch (Test)
-            </Button>
+            {/* Mock punch button for testing - only show in test mode */}
+            {isTestMode && (
+              <Button 
+                onClick={simulatePunch}
+                size="lg"
+                className="text-2xl px-16 py-6 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold rounded-2xl shadow-2xl transform hover:scale-110 transition-all duration-200 border-4 border-yellow-400"
+              >
+                🥊 Simulate Punch (Test)
+              </Button>
+            )}
 
             <div className="mt-6 text-lg opacity-80 bg-gray-800/30 rounded-lg p-4">
               <p className="mb-2">💡 Punch straight at the target</p>
