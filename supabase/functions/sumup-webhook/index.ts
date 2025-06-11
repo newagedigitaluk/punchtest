@@ -27,16 +27,64 @@ serve(async (req) => {
         client_transaction_id,
         status,
         transaction_id,
-        merchant_code
+        merchant_code,
+        amount,
+        currency = 'GBP',
+        payment_type
       }
     } = webhookData
 
     console.log(`Webhook received for transaction ${client_transaction_id}: ${status}`)
 
-    // Initialize Supabase client for real-time updates
+    // Initialize Supabase client for database operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Store or update transaction in database
+    const { data: existingTransaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('client_transaction_id', client_transaction_id)
+      .single()
+
+    if (existingTransaction) {
+      // Update existing transaction
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          sumup_transaction_id: transaction_id,
+          status: status,
+          payment_method: payment_type,
+          updated_at: new Date().toISOString()
+        })
+        .eq('client_transaction_id', client_transaction_id)
+
+      if (updateError) {
+        console.error('Error updating transaction:', updateError)
+      } else {
+        console.log('Transaction updated successfully')
+      }
+    } else {
+      // Insert new transaction
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert({
+          client_transaction_id,
+          sumup_transaction_id: transaction_id,
+          amount: amount || 1.00,
+          currency: currency,
+          status: status,
+          merchant_code: merchant_code,
+          payment_method: payment_type
+        })
+
+      if (insertError) {
+        console.error('Error inserting transaction:', insertError)
+      } else {
+        console.log('Transaction stored successfully')
+      }
+    }
 
     // Broadcast the payment status update to all connected clients
     const channelName = `payment-${client_transaction_id}`
@@ -60,7 +108,6 @@ serve(async (req) => {
     if (status === 'successful') {
       console.log('Payment successful - triggering punch machine')
       
-      // Updated webhook URL to use just the domain
       const punchMachineUrl = 'https://cunning-burro-similarly.ngrok-free.app'
       
       try {
@@ -78,7 +125,6 @@ serve(async (req) => {
         }
       } catch (triggerError) {
         console.error('Error triggering punch machine:', triggerError)
-        // Don't fail the webhook response even if punch trigger fails
       }
     }
 

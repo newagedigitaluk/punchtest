@@ -8,13 +8,14 @@ import { useState } from "react";
 import { Settings, BarChart3, DollarSign, Wrench, Users, History, CreditCard, Monitor } from "lucide-react";
 import SumUpSettings from "./SumUpSettings";
 import SystemMonitor from "./SystemMonitor";
+import TransactionManagement from "./TransactionManagement";
 
 interface AdminMenuProps {
   onExit: () => void;
 }
 
 const AdminMenu = ({ onExit }: AdminMenuProps) => {
-  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'payments' | 'maintenance' | 'sumup' | 'monitor'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'payments' | 'maintenance' | 'sumup' | 'monitor' | 'transactions'>('main');
   const [settings, setSettings] = useState({
     pricePerPunch: 1.00,
     difficulty: 'normal',
@@ -27,6 +28,7 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 
   const menuItems = [
     { id: 'monitor', title: 'System Monitor', icon: Monitor, description: 'Check system health and connectivity status' },
+    { id: 'transactions', title: 'Transaction Management', icon: CreditCard, description: 'View transactions and process refunds' },
     { id: 'settings', title: 'Machine Settings', icon: Settings, description: 'Configure pricing, difficulty, and system settings' },
     { id: 'sumup', title: 'SumUp Payment', icon: CreditCard, description: 'Configure SumUp payment system and card readers' },
     { id: 'stats', title: 'Statistics', icon: BarChart3, description: 'View usage statistics and performance data' },
@@ -40,6 +42,10 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 
   if (currentView === 'monitor') {
     return <SystemMonitor onBack={() => setCurrentView('main')} />;
+  }
+
+  if (currentView === 'transactions') {
+    return <TransactionManagement onBack={() => setCurrentView('main')} />;
   }
 
   if (currentView === 'main') {

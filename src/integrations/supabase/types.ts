@@ -9,7 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          processed_by: string | null
+          reason: string | null
+          refund_id: string
+          status: string
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          processed_by?: string | null
+          reason?: string | null
+          refund_id: string
+          status: string
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          processed_by?: string | null
+          reason?: string | null
+          refund_id?: string
+          status?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          client_transaction_id: string
+          created_at: string
+          currency: string
+          id: string
+          merchant_code: string
+          payment_method: string | null
+          punch_force: number | null
+          refund_amount: number | null
+          refund_reason: string | null
+          status: string
+          sumup_transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_transaction_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          merchant_code: string
+          payment_method?: string | null
+          punch_force?: number | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          status: string
+          sumup_transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_transaction_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          merchant_code?: string
+          payment_method?: string | null
+          punch_force?: number | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          status?: string
+          sumup_transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
