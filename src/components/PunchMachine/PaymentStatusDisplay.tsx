@@ -6,13 +6,21 @@ interface PaymentStatusDisplayProps {
   countdown: number;
   error: string;
   checkoutId: string | null;
+  selectedReaderId: string | null;
+  availableReaders: any[];
+  isTestMode: boolean;
+  onRetry: () => void;
 }
 
 const PaymentStatusDisplay = ({
   paymentStatus,
   countdown,
   error,
-  checkoutId
+  checkoutId,
+  selectedReaderId,
+  availableReaders,
+  isTestMode,
+  onRetry
 }: PaymentStatusDisplayProps) => {
   if (paymentStatus === 'waiting') {
     return (
@@ -31,6 +39,12 @@ const PaymentStatusDisplay = ({
           <p className="text-2xl opacity-90 mb-4">
             Payment will be processed via SumUp
           </p>
+          
+          {selectedReaderId && (
+            <div className="bg-blue-500/20 text-blue-300 px-4 py-2 rounded-lg text-lg mb-2">
+              Reader: {selectedReaderId}
+            </div>
+          )}
         </div>
         
         <p className="text-lg opacity-70 bg-gray-800/50 rounded-lg p-3">
@@ -50,6 +64,9 @@ const PaymentStatusDisplay = ({
         <p className="text-2xl mb-4">Complete payment on your SumUp reader</p>
         {checkoutId && (
           <p className="text-sm opacity-70">Payment ID: {checkoutId}</p>
+        )}
+        {selectedReaderId && (
+          <p className="text-sm opacity-70">Reader: {selectedReaderId}</p>
         )}
       </div>
     );
@@ -75,6 +92,12 @@ const PaymentStatusDisplay = ({
         </h2>
         <div className="text-6xl mb-6 animate-pulse">❌</div>
         <p className="text-2xl mb-4">{error || 'Please try again'}</p>
+        
+        {!selectedReaderId && availableReaders.length === 0 && (
+          <p className="text-lg text-orange-400 mb-4">
+            No SumUp readers found. Please ensure a reader is paired.
+          </p>
+        )}
       </div>
     );
   }
