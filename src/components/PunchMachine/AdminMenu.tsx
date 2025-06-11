@@ -5,18 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { Settings, BarChart3, DollarSign, Wrench, Users, History, CreditCard, Monitor, FileText } from "lucide-react";
+import { Settings, BarChart3, Wrench, Users, CreditCard, Monitor } from "lucide-react";
 import SumUpSettings from "./SumUpSettings";
 import SystemMonitor from "./SystemMonitor";
 import TransactionManagement from "./TransactionManagement";
-import TransactionReport from "./TransactionReport";
 
 interface AdminMenuProps {
   onExit: () => void;
 }
 
 const AdminMenu = ({ onExit }: AdminMenuProps) => {
-  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'payments' | 'maintenance' | 'sumup' | 'monitor' | 'transactions' | 'report'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'stats' | 'maintenance' | 'sumup' | 'monitor' | 'transactions'>('main');
   const [settings, setSettings] = useState({
     pricePerPunch: 1.00,
     difficulty: 'normal',
@@ -29,12 +28,10 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 
   const menuItems = [
     { id: 'monitor', title: 'System Monitor', icon: Monitor, description: 'Check system health and connectivity status' },
-    { id: 'report', title: 'Transaction Report', icon: FileText, description: 'View payment vs punch analysis and discrepancies' },
-    { id: 'transactions', title: 'Transaction Management', icon: CreditCard, description: 'View transactions and process refunds' },
+    { id: 'transactions', title: 'Transaction Management', icon: CreditCard, description: 'View transactions, process refunds, and analyze payment vs punch data' },
     { id: 'settings', title: 'Machine Settings', icon: Settings, description: 'Configure pricing, difficulty, and system settings' },
     { id: 'sumup', title: 'SumUp Payment', icon: CreditCard, description: 'Configure SumUp payment system and card readers' },
     { id: 'stats', title: 'Statistics', icon: BarChart3, description: 'View usage statistics and performance data' },
-    { id: 'payments', title: 'Payment Records', icon: DollarSign, description: 'View transaction history and revenue' },
     { id: 'maintenance', title: 'Maintenance', icon: Wrench, description: 'System diagnostics and maintenance tools' }
   ];
 
@@ -48,10 +45,6 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 
   if (currentView === 'transactions') {
     return <TransactionManagement onBack={() => setCurrentView('main')} />;
-  }
-
-  if (currentView === 'report') {
-    return <TransactionReport onBack={() => setCurrentView('main')} />;
   }
 
   if (currentView === 'main') {
