@@ -1,14 +1,20 @@
 
 project_id = "fpazipkhxsxcghwdnvqq"
 
-[functions.sumup-payment]
+[functions.punch-results]
 verify_jwt = false
 
-[functions.sumup-status]
-verify_jwt = false
-
-[functions.sumup-readers]
-verify_jwt = false
+[functions.punch-trigger]
+verify_jwt = true
 
 [functions.sumup-webhook]
 verify_jwt = false
+
+[functions.sumup-payment]
+verify_jwt = true
+
+[functions.sumup-readers]
+verify_jwt = true
+
+[functions.sumup-status]
+verify_jwt = true
