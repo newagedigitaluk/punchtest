@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -440,5 +441,3 @@ const AdminMenu = ({ onExit }: AdminMenuProps) => {
 };
 
 export default AdminMenu;
-
-</edits_to_apply>
