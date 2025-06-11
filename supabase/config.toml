@@ -1,8 +1,9 @@
 
+
 project_id = "fpazipkhxsxcghwdnvqq"
 
 [functions.punch-results]
-verify_jwt = false
+verify_jwt = true
 
 [functions.punch-trigger]
 verify_jwt = true
@@ -18,3 +19,4 @@ verify_jwt = true
 
 [functions.sumup-status]
 verify_jwt = true
+
