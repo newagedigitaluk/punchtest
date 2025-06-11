@@ -72,10 +72,40 @@ serve(async (req) => {
       )
     }
 
-    // Initialize Supabase client for real-time updates
+    // Initialize Supabase client for database updates
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // **CRITICAL FIX: Save punch force to database**
+    console.log(`Updating database with punch force: ${finalPunchForce}kg for transaction: ${finalClientTransactionId}`)
+    
+    const { data: updateData, error: updateError } = await supabase
+      .from('transactions')
+      .update({ 
+        punch_force: finalPunchForce,
+        updated_at: new Date().toISOString()
+      })
+      .eq('client_transaction_id', finalClientTransactionId)
+      .select()
+
+    if (updateError) {
+      console.error('Failed to update transaction with punch force:', updateError)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Database update failed: ${updateError.message}`,
+          clientTransactionId: finalClientTransactionId,
+          punchForce: finalPunchForce
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('Database updated successfully:', updateData)
 
     // Broadcast the punch results to the connected clients
     const channelName = `punch-results-${finalClientTransactionId}`
@@ -117,7 +147,8 @@ serve(async (req) => {
         message: 'Punch results received and processed successfully',
         clientTransactionId: finalClientTransactionId,
         punchForce: finalPunchForce,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        databaseUpdated: true
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
