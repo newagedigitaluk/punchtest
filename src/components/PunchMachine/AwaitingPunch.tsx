@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { usePunchResults } from "@/hooks/usePunchResults";
 
 interface AwaitingPunchProps {
   onPunchDetected: (power: number) => void;
@@ -10,15 +11,37 @@ interface AwaitingPunchProps {
 const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
   const [countdown, setCountdown] = useState(30);
   const [isReady, setIsReady] = useState(false);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
+
+  // Get the checkout ID from sessionStorage (set during payment)
+  useEffect(() => {
+    const storedCheckoutId = sessionStorage.getItem('currentCheckoutId');
+    console.log('Retrieved checkout ID from session:', storedCheckoutId);
+    setCheckoutId(storedCheckoutId);
+  }, []);
+
+  // Use the punch results hook to listen for real punch data
+  const { punchStatus, startWaitingForPunch } = usePunchResults({
+    checkoutId,
+    onPunchComplete: (force: number) => {
+      console.log('Real punch detected with force:', force);
+      onPunchDetected(force);
+    }
+  });
 
   useEffect(() => {
     // Initial 3-second countdown before machine is ready
     const readyTimer = setTimeout(() => {
       setIsReady(true);
+      // Start listening for punch results when ready
+      if (checkoutId) {
+        console.log('Starting to wait for punch results for checkout:', checkoutId);
+        startWaitingForPunch();
+      }
     }, 3000);
 
     return () => clearTimeout(readyTimer);
-  }, []);
+  }, [checkoutId, startWaitingForPunch]);
 
   useEffect(() => {
     if (isReady && countdown > 0) {
@@ -29,9 +52,18 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
     }
   }, [countdown, isReady, onTimeout]);
 
+  // Handle timeout from punch results hook
+  useEffect(() => {
+    if (punchStatus === 'timeout') {
+      console.log('Punch timeout detected');
+      onTimeout();
+    }
+  }, [punchStatus, onTimeout]);
+
   const simulatePunch = () => {
     // Simulate punch detection with random power between 50-999 kg
     const power = Math.floor(Math.random() * 950) + 50;
+    console.log('Simulated punch with force:', power);
     onPunchDetected(power);
   };
 
@@ -74,6 +106,18 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
               <div className="text-4xl font-bold text-red-400 bg-gray-900/50 rounded-xl p-4">
                 ⏰ Time left: {countdown}s
               </div>
+
+              {checkoutId && (
+                <div className="mt-4 text-lg text-green-300 bg-gray-900/30 rounded-lg p-3">
+                  🔗 Listening for punch from machine (ID: {checkoutId.slice(0, 8)}...)
+                </div>
+              )}
+
+              {punchStatus === 'waiting' && (
+                <div className="mt-4 text-lg text-blue-300 bg-gray-900/30 rounded-lg p-3">
+                  ⏳ Waiting for punch results...
+                </div>
+              )}
             </div>
 
             {/* Mock punch button for testing */}
