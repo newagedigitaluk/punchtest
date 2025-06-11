@@ -108,7 +108,7 @@
   .landscape-mode {
     /* Lock orientation to landscape on mobile devices */
     @media screen and (orientation: portrait) and (max-width: 1024px) {
-      transform: rotate(-90deg);
+      transform: rotate(90deg);
       transform-origin: center center;
       position: absolute;
       width: 100vh;
