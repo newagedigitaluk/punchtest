@@ -9,7 +9,7 @@ interface AwaitingPunchProps {
 }
 
 const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60); // 1 minute timer for all modes
   const [isReady, setIsReady] = useState(false);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   
@@ -47,22 +47,23 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
   }, [checkoutId, startWaitingForPunch]);
 
   useEffect(() => {
-    // Only use countdown timer in test mode
-    if (isTestMode && isReady && countdown > 0) {
+    // 1-minute countdown timer for all modes
+    if (isReady && countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (isTestMode && countdown === 0) {
+    } else if (countdown === 0) {
+      console.log('1-minute timeout reached');
       onTimeout();
     }
-  }, [countdown, isReady, onTimeout, isTestMode]);
+  }, [countdown, isReady, onTimeout]);
 
-  // Handle timeout from punch results hook (only in test mode)
+  // Handle timeout from punch results hook
   useEffect(() => {
-    if (isTestMode && punchStatus === 'timeout') {
-      console.log('Punch timeout detected');
+    if (punchStatus === 'timeout') {
+      console.log('Punch timeout detected from hook');
       onTimeout();
     }
-  }, [punchStatus, onTimeout, isTestMode]);
+  }, [punchStatus, onTimeout]);
 
   const simulatePunch = () => {
     // Simulate punch detection with random power between 50-999 kg
@@ -107,12 +108,12 @@ const AwaitingPunch = ({ onPunchDetected, onTimeout }: AwaitingPunchProps) => {
                 You have one credit - make it count!
               </p>
               
-              {isTestMode && (
-                <div className="text-4xl font-bold text-red-400 bg-gray-900/50 rounded-xl p-4">
-                  ⏰ Time left: {countdown}s
-                </div>
-              )}
+              {/* Always show the 1-minute timer */}
+              <div className="text-4xl font-bold text-red-400 bg-gray-900/50 rounded-xl p-4">
+                ⏰ Time left: {countdown}s
+              </div>
 
+              {/* Only show debug info in test mode */}
               {isTestMode && checkoutId && (
                 <div className="mt-4 text-lg text-green-300 bg-gray-900/30 rounded-lg p-3">
                   🔗 Listening for punch from machine (ID: {checkoutId.slice(0, 8)}...)
