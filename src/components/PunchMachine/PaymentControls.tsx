@@ -18,12 +18,12 @@ const PaymentControls = ({
 }: PaymentControlsProps) => {
   if (paymentStatus === 'waiting') {
     return (
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         <Button 
           onClick={onBack}
           variant="outline"
           size="lg"
-          className="text-2xl px-12 py-6 bg-gray-800 text-white border-2 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500 transition-all duration-200"
+          className="text-2xl px-16 py-8 bg-gray-800/80 text-white border-2 border-gray-500 hover:bg-gray-700 hover:text-white hover:border-gray-400 transition-all duration-300 rounded-xl backdrop-blur-sm"
         >
           ← Cancel
         </Button>
@@ -32,7 +32,7 @@ const PaymentControls = ({
           onClick={onInitiatePayment}
           disabled={isLoading}
           size="lg"
-          className="text-2xl px-12 py-6 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none"
+          className="text-2xl px-16 py-8 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:transform-none border-2 border-green-400/30"
         >
           {isLoading ? '⏳ Starting...' : '💳 Start Payment'}
         </Button>
@@ -42,12 +42,12 @@ const PaymentControls = ({
 
   if (paymentStatus === 'failed') {
     return (
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         <Button 
           onClick={onBack}
           variant="outline"
           size="lg"
-          className="text-2xl px-12 py-6 bg-gray-800 text-white border-2 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500 transition-all duration-200"
+          className="text-2xl px-16 py-8 bg-gray-800/80 text-white border-2 border-gray-500 hover:bg-gray-700 hover:text-white hover:border-gray-400 transition-all duration-300 rounded-xl backdrop-blur-sm"
         >
           ← Back
         </Button>
@@ -55,7 +55,7 @@ const PaymentControls = ({
         <Button 
           onClick={onReset}
           size="lg"
-          className="text-2xl px-12 py-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl"
+          className="text-2xl px-16 py-8 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/30"
         >
           🔄 Try Again
         </Button>

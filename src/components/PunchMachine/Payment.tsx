@@ -14,7 +14,9 @@ interface PaymentProps {
 
 const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
-  const isTestMode = true; // You can make this configurable later
+  
+  // Get test mode from localStorage (set in admin settings)
+  const isTestMode = localStorage.getItem('sumupTestMode') === 'true';
 
   const { availableReaders, selectedReaderId, error: readerError } = useReaderManagement(isTestMode);
 
@@ -41,7 +43,8 @@ const Payment = ({ onPaymentComplete, onBack }: PaymentProps) => {
       setError(errorMessage);
       setPaymentStatus('failed');
     },
-    readerId: selectedReaderId || undefined
+    readerId: selectedReaderId || undefined,
+    isTestMode
   });
 
   const handleInitiatePayment = () => {
