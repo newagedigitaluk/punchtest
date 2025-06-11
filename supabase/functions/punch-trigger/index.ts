@@ -22,6 +22,15 @@ serve(async (req) => {
 
     console.log(`Sending punch activation for transaction ${clientTransactionId}`)
 
+    // Prepare the payload for the Pi
+    const piPayload = {
+      session_id: clientTransactionId,
+      type: 'activate',
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log('Payload being sent to Pi:', JSON.stringify(piPayload, null, 2))
+
     // Send activation signal to Raspberry Pi
     console.log(`Sending webhook to Pi at: ${punchMachineUrl}`)
     
@@ -29,29 +38,48 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+        'ngrok-skip-browser-warning': 'true',
+        'User-Agent': 'Supabase-Edge-Function/1.0'
       },
-      body: JSON.stringify({
-        session_id: clientTransactionId,
-        type: 'activate',
-        timestamp: new Date().toISOString()
-      })
+      body: JSON.stringify(piPayload)
     })
 
     console.log(`Pi response status: ${piResponse.status}`)
+    console.log(`Pi response status text: ${piResponse.statusText}`)
+    
+    // Log response headers to see if there are any clues
+    console.log('Pi response headers:')
+    for (const [key, value] of piResponse.headers.entries()) {
+      console.log(`  ${key}: ${value}`)
+    }
+    
     const piResponseText = await piResponse.text()
-    console.log(`Pi response: ${piResponseText}`)
+    console.log(`Pi response body: ${piResponseText}`)
 
     if (!piResponse.ok) {
       console.error(`Pi webhook failed: ${piResponse.status} ${piResponse.statusText}`)
       console.error(`Pi response body: ${piResponseText}`)
       
+      // Try to parse the error response to get more details
+      try {
+        const errorData = JSON.parse(piResponseText)
+        console.error('Parsed Pi error data:', JSON.stringify(errorData, null, 2))
+      } catch (parseError) {
+        console.error('Could not parse Pi error response as JSON')
+      }
+      
       // Return error - payment processing should fail if Pi is not reachable
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Punch machine communication failed: ${piResponse.status}`,
-          clientTransactionId
+          error: `Punch machine communication failed: ${piResponse.status} - ${piResponseText}`,
+          clientTransactionId,
+          piPayload: piPayload,
+          piResponse: {
+            status: piResponse.status,
+            statusText: piResponse.statusText,
+            body: piResponseText
+          }
         }),
         {
           status: 500,
@@ -67,7 +95,8 @@ serve(async (req) => {
         success: true,
         message: 'Punch machine activated successfully',
         clientTransactionId,
-        piResponse: piResponseText
+        piResponse: piResponseText,
+        piPayload: piPayload
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
