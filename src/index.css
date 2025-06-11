@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,5 +100,29 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Force landscape orientation */
+@layer utilities {
+  .landscape-mode {
+    /* Lock orientation to landscape on mobile devices */
+    @media screen and (orientation: portrait) and (max-width: 1024px) {
+      transform: rotate(90deg);
+      transform-origin: center center;
+      position: absolute;
+      width: 100vh;
+      height: 100vw;
+      top: calc((100vh - 100vw) / 2);
+      left: calc((100vw - 100vh) / 2);
+    }
+  }
+  
+  /* Ensure full screen on landscape devices */
+  @media screen and (orientation: landscape) {
+    .landscape-mode {
+      width: 100vw;
+      height: 100vh;
+    }
   }
 }

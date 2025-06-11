@@ -60,7 +60,7 @@ const PunchMachine = () => {
   };
 
   return (
-    <div className="w-screen h-screen overflow-hidden">
+    <div className="w-screen h-screen overflow-hidden landscape-mode">
       {gameState === 'screensaver' && (
         <Screensaver onStart={handleStart} onAdminAccess={handleAdminAccess} />
       )}
