@@ -19,24 +19,51 @@ serve(async (req) => {
     const punchData = await req.json()
     console.log('Punch data payload:', JSON.stringify(punchData, null, 2))
 
-    // Extract punch information
+    // Handle ping requests
+    if (punchData.type === 'ping') {
+      console.log('Received ping from machine:', punchData.machine_id)
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Ping received',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Extract punch information - handle both field name formats
     const { 
+      session_id,
       clientTransactionId,
+      force_kg,
       punchForce,
       timestamp,
       deviceId,
+      machine_id,
       status = 'completed'
     } = punchData
 
-    console.log(`Punch results for transaction ${clientTransactionId}: ${punchForce}kg force`)
+    // Use the correct field names from your backend
+    const finalClientTransactionId = session_id || clientTransactionId
+    const finalPunchForce = force_kg || punchForce
+    const finalDeviceId = deviceId || machine_id
+
+    console.log(`Punch results for transaction ${finalClientTransactionId}: ${finalPunchForce}kg force`)
 
     // Validate required fields
-    if (!clientTransactionId || punchForce === undefined) {
-      console.error('Missing required fields:', { clientTransactionId, punchForce })
+    if (!finalClientTransactionId || finalPunchForce === undefined) {
+      console.error('Missing required fields:', { 
+        finalClientTransactionId, 
+        finalPunchForce,
+        receivedData: punchData 
+      })
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Missing required fields: clientTransactionId and punchForce'
+          error: 'Missing required fields: session_id/clientTransactionId and force_kg/punchForce'
         }),
         {
           status: 400,
@@ -51,32 +78,32 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Broadcast the punch results to the connected clients
-    const channelName = `punch-results-${clientTransactionId}`
+    const channelName = `punch-results-${finalClientTransactionId}`
     
     await supabase.channel(channelName).send({
       type: 'broadcast',
       event: 'punch_completed',
       payload: {
-        clientTransactionId,
-        punchForce,
+        clientTransactionId: finalClientTransactionId,
+        punchForce: finalPunchForce,
         status,
         timestamp: timestamp || new Date().toISOString(),
-        deviceId,
+        deviceId: finalDeviceId,
         source: 'raspberry_pi'
       }
     })
 
-    console.log(`Broadcasted punch results for ${channelName}: ${punchForce}kg`)
+    console.log(`Broadcasted punch results for ${channelName}: ${finalPunchForce}kg`)
 
     // Also broadcast to a general punch machine channel for admin monitoring
     await supabase.channel('punch-machine-admin').send({
       type: 'broadcast',
       event: 'punch_recorded',
       payload: {
-        clientTransactionId,
-        punchForce,
+        clientTransactionId: finalClientTransactionId,
+        punchForce: finalPunchForce,
         timestamp: timestamp || new Date().toISOString(),
-        deviceId,
+        deviceId: finalDeviceId,
         status
       }
     })
@@ -88,8 +115,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: 'Punch results received and processed successfully',
-        clientTransactionId,
-        punchForce,
+        clientTransactionId: finalClientTransactionId,
+        punchForce: finalPunchForce,
         timestamp: new Date().toISOString()
       }),
       {
