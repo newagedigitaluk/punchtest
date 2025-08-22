@@ -58,8 +58,13 @@ const SystemMonitor = ({ onBack }: SystemMonitorProps) => {
 
   const checkWebhookStatus = async (): Promise<'online' | 'offline'> => {
     try {
-      // Check if webhook endpoint is responding
-      const response = await fetch('/api/health', { method: 'HEAD' });
+      // Check Supabase edge functions health
+      const response = await fetch('https://fpazipkhxsxcghwdnvqq.supabase.co/functions/v1/sumup-webhook', {
+        method: 'OPTIONS',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYXppcGtoeHN4Y2dod2RudnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTQ5MDcsImV4cCI6MjA2NTEzMDkwN30.7aORFpQa_r3h8gezJeGmYpCr9pRixX6t73oEBNqCfHo'
+        }
+      });
       return response.ok ? 'online' : 'offline';
     } catch {
       return 'offline';
@@ -68,9 +73,14 @@ const SystemMonitor = ({ onBack }: SystemMonitorProps) => {
 
   const checkDatabaseStatus = async (): Promise<'online' | 'offline'> => {
     try {
-      // Simple database connectivity check
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return 'online';
+      // Check database connectivity by doing a simple query
+      const response = await fetch('https://fpazipkhxsxcghwdnvqq.supabase.co/rest/v1/transactions?select=count', {
+        method: 'HEAD',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYXppcGtoeHN4Y2dod2RudnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTQ5MDcsImV4cCI6MjA2NTEzMDkwN30.7aORFpQa_r3h8gezJeGmYpCr9pRixX6t73oEBNqCfHo'
+        }
+      });
+      return response.ok ? 'online' : 'offline';
     } catch {
       return 'offline';
     }
@@ -78,9 +88,17 @@ const SystemMonitor = ({ onBack }: SystemMonitorProps) => {
 
   const checkPaymentSystemStatus = async (): Promise<'online' | 'offline'> => {
     try {
-      // Check SumUp API connectivity
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return 'online';
+      // Check if we can fetch SumUp readers (tests API connectivity)
+      const response = await fetch('https://fpazipkhxsxcghwdnvqq.supabase.co/functions/v1/sumup-readers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYXppcGtoeHN4Y2dod2RudnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTQ5MDcsImV4cCI6MjA2NTEzMDkwN30.7aORFpQa_r3h8gezJeGmYpCr9pRixX6t73oEBNqCfHo'
+        },
+        body: JSON.stringify({ isTestMode: false, action: 'list' })
+      });
+      const data = await response.json();
+      return data.success ? 'online' : 'offline';
     } catch {
       return 'offline';
     }
